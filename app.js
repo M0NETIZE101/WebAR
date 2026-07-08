@@ -95,7 +95,7 @@
         const scene = document.createElement('a-scene');
         scene.setAttribute('embedded', '');
         scene.setAttribute('vr-mode-ui', 'enabled: false');
-        scene.setAttribute('renderer', 'logarithmicDepthBuffer: true; antialias: true; precision: mediump');
+        scene.setAttribute('renderer', 'logarithmicDepthBuffer: true; antialias: true; precision: mediump; alpha: true;');
         scene.setAttribute('loading-screen', 'enabled: false');
         scene.setAttribute('arjs',
             'sourceType: webcam; debugUIEnabled: false; detectionMode: mono; trackingMethod: best;'
