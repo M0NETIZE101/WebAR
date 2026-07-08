@@ -3,12 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Dinosaur - Pteradactal</title>
+    <title>AR Pteradactal</title>
     
-    <!-- ===== STYLES ===== -->
-    <link rel="stylesheet" href="css/style.css">
-    
-    <!-- ===== THREE.JS ===== -->
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000; 
+            overflow: hidden; 
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ar-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        /* Loading */
+        #loading {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1000;
+            color: white;
+        }
+        #loading .spinner {
+            width: 50px; height: 50px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #loading-text { font-size: 18px; color: #888; }
+        
+        /* Instructions */
+        #instructions {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .box {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 400px;
+            text-align: center;
+            color: white;
+        }
+        .box h2 { margin-bottom: 15px; font-size: 24px; }
+        .box p { margin-bottom: 30px; opacity: 0.8; line-height: 1.6; }
+        #start-btn {
+            background: linear-gradient(135deg, #00d4ff, #0072ff);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s;
+            width: 100%;
+        }
+        #start-btn:hover { transform: scale(1.05); }
+        #start-btn:active { transform: scale(0.95); }
+        #start-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        #status-text {
+            margin-top: 15px;
+            font-size: 14px;
+            opacity: 0.7;
+            min-height: 20px;
+        }
+        
+        /* Status Message */
+        #status-msg {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            padding: 12px 24px;
+            border-radius: 50px;
+            color: white;
+            font-size: 14px;
+            z-index: 200;
+            border: 1px solid rgba(255,255,255,0.1);
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        #status-msg.show { opacity: 1; }
+        #status-msg.success { border-color: #00d4ff; color: #00d4ff; }
+        #status-msg.error { border-color: #ff4444; color: #ff4444; }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <!-- ===== LOADING ===== -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <p id="loading-text">Loading Pteradactal...</p>
+    </div>
+
+    <!-- ===== INSTRUCTIONS ===== -->
+    <div id="instructions">
+        <div class="box">
+            <h2>🦕 AR Pteradactal</h2>
+            <p>Point your camera at the QR code to see the Pteradactal come to life!</p>
+            <button id="start-btn">📷 Start AR</button>
+            <p id="status-text">Camera permission required</p>
+        </div>
+    </div>
+
+    <!-- ===== AR CONTAINER ===== -->
+    <div id="ar-container"></div>
+
+    <!-- ===== STATUS ===== -->
+    <div id="status-msg"></div>
+
     <script type="importmap">
         {
             "imports": {
@@ -17,213 +156,113 @@
             }
         }
     </script>
-</head>
-<body>
-    <!-- Loading Screen -->
-    <div id="loading-screen">
-        <div class="loader-container">
-            <div class="loader"></div>
-            <p id="loading-text">Loading Pteradactal...</p>
-        </div>
-    </div>
-    
-    <!-- Instructions -->
-    <div id="instructions">
-        <div class="instruction-box">
-            <h2>🦕 AR Pteradactal</h2>
-            <p>Place the QR code in view<br>to see the Pteradactal come to life!</p>
-            <button id="start-ar-btn">📷 Start AR</button>
-            <div id="status-container" style="margin-top: 15px;">
-                <p id="permission-status" style="font-size: 14px; opacity: 0.7;"></p>
-                <div id="ar-progress" style="display: none; margin-top: 10px;">
-                    <div style="width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
-                        <div id="ar-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #00d4ff, #0072ff); transition: width 0.3s;"></div>
-                    </div>
-                    <p id="ar-progress-text" style="font-size: 12px; opacity: 0.5; margin-top: 5px;">Initializing...</p>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- AR Container -->
-    <div id="ar-container"></div>
-    
-    <!-- Status Message -->
-    <div id="status-message"></div>
-    
-    <!-- Debug Info -->
-    <div id="debug-info"></div>
 
     <script type="module">
         import * as THREE from 'three';
-        import { ARButton } from 'three/addons/webxr/ARButton.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-        
-        // ===== CONFIGURATION =====
-        const CONFIG = {
-            modelPath: './models/dinosaur/Pteradactal.glb',
-            modelScale: 0.5,
-            modelPosition: new THREE.Vector3(0, 0, -0.5),
-        };
-        
-        // ===== DOM REFS =====
-        const loadingScreen = document.getElementById('loading-screen');
+
+        // ============================================================
+        // DOM ELEMENTS
+        // ============================================================
+        const loading = document.getElementById('loading');
         const loadingText = document.getElementById('loading-text');
         const instructions = document.getElementById('instructions');
-        const startBtn = document.getElementById('start-ar-btn');
-        const permissionStatus = document.getElementById('permission-status');
-        const statusMsg = document.getElementById('status-message');
-        const debugInfo = document.getElementById('debug-info');
+        const startBtn = document.getElementById('start-btn');
+        const statusText = document.getElementById('status-text');
+        const statusMsg = document.getElementById('status-msg');
         const container = document.getElementById('ar-container');
-        const arProgress = document.getElementById('ar-progress');
-        const arProgressBar = document.getElementById('ar-progress-bar');
-        const arProgressText = document.getElementById('ar-progress-text');
-        
-        // ===== STATE =====
+
+        // ============================================================
+        // STATE
+        // ============================================================
         let scene, camera, renderer;
         let model = null;
-        let arSession = null;
-        let isRunning = false;
-        let hasCameraPermission = false;
-        let isArStarting = false;
-        
-        // ===== DEBUG =====
-        function debug(message) {
-            console.log('🔍', message);
-            if (debugInfo) {
-                debugInfo.textContent = message;
-                debugInfo.classList.add('show');
-            }
-        }
-        
-        // ===== STATUS =====
+        let isArRunning = false;
+        let hasPermission = false;
+
+        // ============================================================
+        // HELPERS
+        // ============================================================
         function showStatus(message, type = '') {
             statusMsg.textContent = message;
-            statusMsg.className = 'visible ' + type;
+            statusMsg.className = 'show ' + type;
             console.log('📱', message);
-            
-            if (type === 'error') {
-                setTimeout(() => {
-                    statusMsg.className = '';
-                }, 8000);
-            }
         }
-        
-        // ===== UPDATE AR PROGRESS =====
-        function updateARProgress(percent, text) {
-            arProgress.style.display = 'block';
-            arProgressBar.style.width = percent + '%';
-            arProgressText.textContent = text;
+
+        function updateStatus(text) {
+            statusText.textContent = text;
         }
-        
-        // ===== REQUEST CAMERA PERMISSION =====
-        async function requestCameraPermission() {
-            debug('📷 Requesting camera permission...');
-            permissionStatus.textContent = '📷 Requesting camera access...';
-            startBtn.textContent = '⏳ Requesting permission...';
-            startBtn.disabled = true;
-            
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: 'environment',
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    }
-                });
-                
-                hasCameraPermission = true;
-                debug('✅ Camera permission granted!');
-                permissionStatus.textContent = '✅ Camera access granted!';
-                permissionStatus.style.color = '#00d4ff';
-                startBtn.textContent = '📷 Start AR';
-                startBtn.disabled = false;
-                
-                stream.getTracks().forEach(track => track.stop());
-                return true;
-                
-            } catch (error) {
-                debug('❌ Camera permission denied: ' + error.message);
-                permissionStatus.textContent = '❌ Camera access denied. Please enable in browser settings.';
-                permissionStatus.style.color = '#ff4444';
-                startBtn.textContent = '🔄 Retry';
-                startBtn.disabled = false;
-                showStatus('❌ Camera permission needed', 'error');
-                return false;
-            }
+
+        function debug(message) {
+            console.log('🔍', message);
         }
-        
-        // ===== SETUP SCENE =====
+
+        // ============================================================
+        // SETUP SCENE
+        // ============================================================
         function setupScene() {
             debug('Setting up scene...');
             
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x000000);
-            
+
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
             camera.position.set(0, 1.6, 0);
-            
-            renderer = new THREE.WebGLRenderer({
-                antialias: true,
-                alpha: false
-            });
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.xr.enabled = true;
-            renderer.xr.setReferenceSpaceType('local-floor');
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.0;
             
             container.appendChild(renderer.domElement);
-            debug('✅ Scene setup complete');
-        }
-        
-        // ===== SETUP LIGHTS =====
-        function setupLights() {
-            debug('Setting up lights...');
-            
+
+            // Lights
             const ambient = new THREE.AmbientLight(0x404040, 0.5);
             scene.add(ambient);
             
-            const directional = new THREE.DirectionalLight(0xffffff, 1.0);
-            directional.position.set(0, 5, 5);
-            directional.castShadow = true;
-            scene.add(directional);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            dirLight.position.set(0, 5, 5);
+            scene.add(dirLight);
             
             const fill = new THREE.DirectionalLight(0x4488ff, 0.3);
             fill.position.set(-5, 0, 5);
             scene.add(fill);
             
-            const back = new THREE.DirectionalLight(0xff8844, 0.2);
-            back.position.set(0, 0, -5);
-            scene.add(back);
-            
             const hemi = new THREE.HemisphereLight(0x87ceeb, 0x362d1e, 0.3);
             scene.add(hemi);
-            
-            debug('✅ Lights setup complete');
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            debug('✅ Scene setup complete');
         }
-        
-        // ===== LOAD MODEL =====
-        function loadModel() {
+
+        // ============================================================
+        // LOAD MODEL
+        // ============================================================
+        async function loadModel() {
             return new Promise((resolve, reject) => {
                 debug('Loading model...');
                 loadingText.textContent = '🦕 Loading Pteradactal...';
-                
+
                 const loader = new GLTFLoader();
                 const dracoLoader = new DRACOLoader();
                 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
                 loader.setDRACOLoader(dracoLoader);
-                
+
                 loader.load(
-                    CONFIG.modelPath,
+                    './models/dinosaur/Pteradactal.glb',
                     (gltf) => {
                         debug('✅ Model loaded!');
                         model = gltf.scene;
-                        model.scale.set(CONFIG.modelScale, CONFIG.modelScale, CONFIG.modelScale);
-                        model.position.copy(CONFIG.modelPosition);
-                        
+                        model.scale.set(0.3, 0.3, 0.3);
+                        model.position.set(0, 0, -0.5);
+
+                        // Animation
                         if (gltf.animations && gltf.animations.length > 0) {
                             const mixer = new THREE.AnimationMixer(model);
                             const action = mixer.clipAction(gltf.animations[0]);
@@ -231,19 +270,12 @@
                             model.userData.mixer = mixer;
                             debug('🎬 Animation playing');
                         }
-                        
-                        model.traverse((node) => {
-                            if (node.isMesh) {
-                                node.castShadow = true;
-                                node.receiveShadow = true;
-                            }
-                        });
-                        
-                        loadingText.textContent = '✅ Pteradactal ready!';
+
+                        loadingText.textContent = '✅ Ready!';
                         setTimeout(() => {
-                            loadingScreen.classList.add('hidden');
+                            loading.classList.add('hidden');
                         }, 500);
-                        
+
                         resolve(model);
                     },
                     (progress) => {
@@ -251,261 +283,196 @@
                         loadingText.textContent = `📥 Loading... ${pct}%`;
                     },
                     (error) => {
-                        debug('❌ Model load error: ' + error.message);
-                        loadingText.textContent = '❌ Failed to load model';
+                        debug('❌ Model error: ' + error.message);
                         reject(error);
                     }
                 );
             });
         }
-        
-        // ===== START AR =====
+
+        // ============================================================
+        // REQUEST CAMERA PERMISSION
+        // ============================================================
+        async function requestCameraPermission() {
+            debug('📷 Requesting camera permission...');
+            updateStatus('📷 Requesting camera access...');
+            startBtn.disabled = true;
+            startBtn.textContent = '⏳ Requesting...';
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                
+                hasPermission = true;
+                stream.getTracks().forEach(track => track.stop());
+                
+                debug('✅ Camera permission granted');
+                updateStatus('✅ Camera access granted');
+                startBtn.textContent = '📷 Start AR';
+                startBtn.disabled = false;
+                return true;
+                
+            } catch (error) {
+                debug('❌ Camera denied: ' + error.message);
+                updateStatus('❌ Camera denied - check browser settings');
+                startBtn.textContent = '🔄 Retry';
+                startBtn.disabled = false;
+                showStatus('❌ Camera permission needed', 'error');
+                return false;
+            }
+        }
+
+        // ============================================================
+        // START AR - DIRECT METHOD (NO ARBUTTON)
+        // ============================================================
         async function startAR() {
-            if (isArStarting) return;
-            isArStarting = true;
-            
             debug('🚀 Starting AR...');
             showStatus('📷 Starting AR...', '');
-            startBtn.textContent = '⏳ Starting...';
             startBtn.disabled = true;
-            
-            // Show progress
-            arProgress.style.display = 'block';
-            updateARProgress(10, 'Checking AR support...');
-            
+            startBtn.textContent = '⏳ Starting...';
+            updateStatus('⏳ Starting AR...');
+
             try {
-                // Step 1: Check WebXR
-                updateARProgress(20, 'Checking WebXR...');
+                // Check WebXR
                 if (!navigator.xr) {
                     throw new Error('WebXR not supported');
                 }
-                
-                // Step 2: Check AR support
-                updateARProgress(30, 'Checking AR support...');
+
+                // Check AR support
                 let supported = false;
                 try {
                     supported = await navigator.xr.isSessionSupported('immersive-ar');
                 } catch (e) {
                     throw new Error('Cannot check AR support');
                 }
-                
+
                 if (!supported) {
                     throw new Error('AR not supported on this device');
                 }
+
                 debug('✅ AR is supported');
-                
-                // Step 3: Check camera permission
-                updateARProgress(40, 'Checking camera permission...');
-                if (!hasCameraPermission) {
+
+                // Ensure we have permission
+                if (!hasPermission) {
                     const granted = await requestCameraPermission();
                     if (!granted) {
                         throw new Error('Camera permission required');
                     }
                 }
-                
-                // Step 4: Create AR session with proper options
-                updateARProgress(50, 'Creating AR session...');
+
+                // Create AR session DIRECTLY
                 debug('Creating AR session...');
+                updateStatus('⏳ Creating AR session...');
                 
-                // Create a direct session without ARButton
                 const session = await navigator.xr.requestSession('immersive-ar', {
-                    requiredFeatures: ['local-floor'],
-                    optionalFeatures: ['hit-test', 'dom-overlay'],
-                    domOverlay: { root: document.body }
+                    requiredFeatures: ['local-floor']
                 });
-                
+
                 debug('✅ AR Session created!');
-                arSession = session;
-                isRunning = true;
-                updateARProgress(70, 'Setting up AR renderer...');
-                
-                // Set up the renderer for XR
-                renderer.xr.setSession(session);
-                
+                showStatus('✅ AR Active!', 'success');
+                updateStatus('✅ AR Active - Scan QR code');
+
+                // Set session on renderer
+                await renderer.xr.setSession(session);
+
                 // Add model to scene
                 if (model) {
                     scene.add(model);
                     model.visible = true;
-                    // Scale animation
-                    model.scale.set(0, 0, 0);
-                    animateScale(model, 0, CONFIG.modelScale, 500);
                     debug('✅ Model added to scene');
                 }
-                
-                updateARProgress(90, 'AR ready!');
-                showStatus('✅ AR active!', 'success');
-                
+
                 // Hide instructions
-                instructions.style.display = 'none';
-                startBtn.textContent = '✅ AR Active';
-                
-                // Start the render loop
+                instructions.classList.add('hidden');
+                startBtn.textContent = '✅ Active';
+
+                // Animation loop
                 renderer.setAnimationLoop(() => {
                     if (model && model.userData && model.userData.mixer) {
                         model.userData.mixer.update(0.016);
                     }
                     renderer.render(scene, camera);
                 });
-                
+
                 // Handle session end
                 session.addEventListener('end', () => {
                     debug('⏹️ AR Session ended');
-                    isRunning = false;
+                    isArRunning = false;
                     renderer.setAnimationLoop(null);
                     showStatus('AR session ended', '');
+                    instructions.classList.remove('hidden');
                     startBtn.textContent = '📷 Restart AR';
                     startBtn.disabled = false;
-                    isArStarting = false;
-                    instructions.style.display = 'flex';
+                    updateStatus('Session ended - tap to restart');
                 });
-                
-                // Handle visibility change (pause when tab hidden)
-                document.addEventListener('visibilitychange', () => {
-                    if (document.hidden && isRunning) {
-                        debug('⏸️ Tab hidden - pausing AR');
-                    } else if (!document.hidden && isRunning) {
-                        debug('▶️ Tab visible - resuming AR');
-                    }
-                });
-                
-                updateARProgress(100, '✅ AR Active!');
-                setTimeout(() => {
-                    arProgress.style.display = 'none';
-                }, 1000);
-                
-                isArStarting = false;
-                
+
+                isArRunning = true;
+
             } catch (error) {
                 debug('❌ AR start failed: ' + error.message);
                 showStatus('❌ ' + error.message, 'error');
                 startBtn.textContent = '🔄 Retry';
                 startBtn.disabled = false;
-                isArStarting = false;
-                arProgress.style.display = 'none';
+                updateStatus('❌ ' + error.message);
                 
                 // Show fallback
                 showFallback(error.message);
             }
         }
-        
-        // ===== ANIMATE SCALE =====
-        function animateScale(object, from, to, duration) {
-            const startTime = Date.now();
-            
-            function update() {
-                const elapsed = Date.now() - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const eased = 1 - Math.pow(1 - progress, 3);
-                const scale = from + (to - from) * eased;
-                
-                object.scale.set(scale, scale, scale);
-                
-                if (progress < 1) {
-                    requestAnimationFrame(update);
-                }
-            }
-            update();
-        }
-        
-        // ===== FALLBACK =====
+
+        // ============================================================
+        // FALLBACK
+        // ============================================================
         function showFallback(message) {
             let fallback = document.getElementById('fallback');
             if (!fallback) {
                 fallback = document.createElement('div');
                 fallback.id = 'fallback';
                 fallback.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: #1a1a2e;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    z-index: 500;
-                    padding: 20px;
+                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                    background: #1a1a2e; display: flex; justify-content: center; align-items: center;
+                    z-index: 500; padding: 20px;
                 `;
                 document.body.appendChild(fallback);
             }
             
             fallback.innerHTML = `
                 <div style="max-width: 400px; background: rgba(255,255,255,0.05); padding: 40px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); text-align: center; color: white;">
-                    <h2 style="color: #ff6b6b; margin-bottom: 15px;">⚠️ AR Not Available</h2>
-                    <p style="opacity: 0.8; margin-bottom: 20px; line-height: 1.6;">
+                    <h2 style="color: #ff6b6b;">⚠️ AR Not Available</h2>
+                    <p style="opacity: 0.8; margin: 20px 0; line-height: 1.6;">
                         ${message}<br><br>
-                        <strong>Try these solutions:</strong>
-                        <br>• Use <strong>Chrome</strong> on Android
-                        <br>• Use <strong>Safari</strong> on iOS 15+
-                        <br>• Make sure you're on <strong>HTTPS</strong>
-                        <br>• Check camera permissions in settings
+                        <strong>Try:</strong>
+                        <br>• Chrome on Android
+                        <br>• Safari on iOS 15+
+                        <br>• HTTPS connection
                     </p>
-                    <a href="desktop-viewer.html" style="display: inline-block; padding: 12px 30px; background: #00d4ff; color: #000; text-decoration: none; border-radius: 10px; font-weight: bold; margin: 10px;">View 3D Model</a>
-                    <br>
-                    <button onclick="location.reload()" style="padding: 12px 30px; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 10px; cursor: pointer; margin: 10px;">🔄 Retry</button>
+                    <a href="desktop-viewer.html" style="display: inline-block; padding: 12px 30px; background: #00d4ff; color: #000; text-decoration: none; border-radius: 10px; font-weight: bold;">View 3D Model</a>
+                    <br><br>
+                    <button onclick="location.reload()" style="padding: 12px 30px; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 10px; cursor: pointer;">🔄 Retry</button>
                 </div>
             `;
             fallback.style.display = 'flex';
         }
-        
-        // ===== RESIZE =====
-        function onResize() {
-            if (camera) {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-            }
-            if (renderer) {
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            }
-        }
-        
-        // ===== CHECK HTTPS =====
-        function checkHTTPS() {
-            if (window.location.protocol !== 'https:' && 
-                window.location.hostname !== 'localhost' && 
-                window.location.hostname !== '127.0.0.1') {
-                console.warn('⚠️ Not running on HTTPS. AR may not work.');
-                showStatus('⚠️ Use HTTPS for AR', 'error');
-                return false;
-            }
-            return true;
-        }
-        
-        // ===== INIT =====
+
+        // ============================================================
+        // INIT
+        // ============================================================
         async function init() {
-            debug('🚀 Initializing AR Pteradactal...');
-            debug('📱 Device: ' + navigator.userAgent);
-            debug('🔗 Protocol: ' + window.location.protocol);
-            
-            checkHTTPS();
+            debug('🚀 Initializing...');
             
             try {
                 setupScene();
-                setupLights();
                 await loadModel();
                 
-                // Check camera permission status
-                try {
-                    const permStatus = await navigator.permissions?.query({ name: 'camera' });
-                    if (permStatus?.state === 'granted') {
-                        hasCameraPermission = true;
-                        permissionStatus.textContent = '✅ Camera permission granted';
-                        permissionStatus.style.color = '#00d4ff';
-                    } else {
-                        permissionStatus.textContent = '📷 Click "Start AR" to request camera access';
-                        permissionStatus.style.color = '#ffaa00';
-                    }
-                } catch (e) {
-                    permissionStatus.textContent = '📷 Camera permission required';
-                }
+                // Show instructions
+                instructions.classList.remove('hidden');
+                updateStatus('📷 Tap "Start AR" to begin');
                 
-                instructions.style.display = 'flex';
-                debug('✅ Ready!');
-                
-                // Start AR button
+                // Start button
                 startBtn.addEventListener('click', async () => {
-                    // If we don't have permission, request it first
-                    if (!hasCameraPermission) {
+                    // If no permission, request it first
+                    if (!hasPermission) {
                         const granted = await requestCameraPermission();
                         if (granted) {
                             await startAR();
@@ -515,16 +482,17 @@
                     }
                 });
                 
-                window.addEventListener('resize', onResize);
+                debug('✅ Ready!');
                 
             } catch (error) {
                 debug('❌ Init error: ' + error.message);
-                showStatus('❌ Failed to initialize: ' + error.message, 'error');
                 showFallback(error.message);
             }
         }
-        
-        // ===== START =====
+
+        // ============================================================
+        // START
+        // ============================================================
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
