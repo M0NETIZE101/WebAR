@@ -31,16 +31,18 @@
     }
 
     // ==========================================
-    // FORCE VIDEO FULLSCREEN
+    // FORCE VIDEO FULLSCREEN & Z-INDEX FIX
     // ==========================================
     function forceVideoFullscreen() {
         let attempts = 0;
-        const maxAttempts = 20;
+        const maxAttempts = 30;
         
         const interval = setInterval(() => {
             const video = document.querySelector('video');
             const canvas = document.querySelector('canvas');
+            const scene = document.querySelector('a-scene');
             
+            // 🔥 FORCE VIDEO TO BACKGROUND
             if (video) {
                 video.style.position = 'fixed';
                 video.style.top = '0';
@@ -50,11 +52,14 @@
                 video.style.maxWidth = '100vw';
                 video.style.maxHeight = '100vh';
                 video.style.objectFit = 'cover';
-                video.style.zIndex = '1';
+                video.style.zIndex = '0';
+                video.style.pointerEvents = 'none';
                 video.style.display = 'block';
                 video.style.backgroundColor = '#000';
+                video.style.setProperty('z-index', '0', 'important');
             }
             
+            // 🔥 FORCE CANVAS TO FOREGROUND (ON TOP OF VIDEO)
             if (canvas) {
                 canvas.style.position = 'fixed';
                 canvas.style.top = '0';
@@ -64,25 +69,67 @@
                 canvas.style.maxWidth = '100vw';
                 canvas.style.maxHeight = '100vh';
                 canvas.style.display = 'block';
-                canvas.style.zIndex = '2';
+                canvas.style.zIndex = '1';
+                canvas.style.background = 'transparent';
+                canvas.style.pointerEvents = 'auto';
+                canvas.style.setProperty('z-index', '1', 'important');
+                canvas.style.setProperty('background', 'transparent', 'important');
             }
             
-            const scene = document.querySelector('a-scene');
+            // Scene container
             if (scene) {
                 scene.style.position = 'fixed';
                 scene.style.top = '0';
                 scene.style.left = '0';
                 scene.style.width = '100vw';
                 scene.style.height = '100vh';
-                scene.style.zIndex = '1';
+                scene.style.zIndex = '0';
+                scene.style.setProperty('z-index', '0', 'important');
             }
             
             attempts++;
             if (attempts >= maxAttempts || (video && canvas)) {
                 clearInterval(interval);
-                console.log('[AR] Fullscreen force complete');
+                console.log('[AR] Fullscreen & z-index force complete');
             }
-        }, 100);
+        }, 200);
+    }
+
+    // ==========================================
+    // NUCLEAR Z-INDEX FIX (Emergency)
+    // ==========================================
+    function nuclearZIndexFix() {
+        const video = document.querySelector('video');
+        const canvas = document.querySelector('canvas');
+        const scene = document.querySelector('a-scene');
+        
+        if (video) {
+            video.style.setProperty('z-index', '0', 'important');
+            video.style.setProperty('position', 'fixed', 'important');
+            video.style.setProperty('top', '0', 'important');
+            video.style.setProperty('left', '0', 'important');
+            video.style.setProperty('width', '100vw', 'important');
+            video.style.setProperty('height', '100vh', 'important');
+            video.style.setProperty('pointer-events', 'none', 'important');
+            video.style.setProperty('object-fit', 'cover', 'important');
+        }
+        
+        if (canvas) {
+            canvas.style.setProperty('z-index', '100', 'important');
+            canvas.style.setProperty('position', 'fixed', 'important');
+            canvas.style.setProperty('top', '0', 'important');
+            canvas.style.setProperty('left', '0', 'important');
+            canvas.style.setProperty('width', '100vw', 'important');
+            canvas.style.setProperty('height', '100vh', 'important');
+            canvas.style.setProperty('background', 'transparent', 'important');
+            canvas.style.setProperty('pointer-events', 'auto', 'important');
+        }
+        
+        if (scene) {
+            scene.style.setProperty('z-index', '0', 'important');
+        }
+        
+        console.log('[AR] Nuclear z-index fix applied');
     }
 
     // ==========================================
@@ -95,32 +142,33 @@
         const scene = document.createElement('a-scene');
         scene.setAttribute('embedded', '');
         scene.setAttribute('vr-mode-ui', 'enabled: false');
+        // 🔥 ADD alpha: true for transparency
         scene.setAttribute('renderer', 'logarithmicDepthBuffer: true; antialias: true; precision: mediump; alpha: true;');
         scene.setAttribute('loading-screen', 'enabled: false');
         scene.setAttribute('arjs',
             'sourceType: webcam; debugUIEnabled: false; detectionMode: mono; trackingMethod: best;'
         );
 
-        // 🔥 FIXED: Only crow is visible by default, others hidden
+        // 🔥 FIXED: Only car is visible by default (since car.glb now exists)
         scene.innerHTML = `
             <!-- Model container - starts hidden, becomes visible on tap -->
             <a-entity id="model-container" position="0 0 -1" visible="false">
                 
-                <!-- 🐦 CROW MODEL (DEFAULT - VISIBLE) -->
+                <!-- 🚗 CAR MODEL (DEFAULT - VISIBLE) -->
                 <a-entity 
-                    id="crow-model" 
-                    gltf-model="url(models/animated_crow/scene.gltf)" 
-                    scale="0.5 0.5 0.5" 
+                    id="car-model" 
+                    gltf-model="url(car.glb)" 
+                    scale="0.15 0.15 0.15" 
                     rotation="0 0 0"
                     animation-mixer="clip: *; loop: repeat"
                     visible="true"
                 ></a-entity>
                 
-                <!-- 🚗 CAR MODEL (HIDDEN) -->
+                <!-- 🐦 CROW MODEL (HIDDEN) -->
                 <a-entity 
-                    id="car-model" 
-                    gltf-model="url(car.glb)" 
-                    scale="0.15 0.15 0.15" 
+                    id="crow-model" 
+                    gltf-model="url(models/animated_crow/scene.gltf)" 
+                    scale="0.5 0.5 0.5" 
                     rotation="0 0 0"
                     animation-mixer="clip: *; loop: repeat"
                     visible="false"
@@ -153,7 +201,9 @@
 
         document.body.appendChild(scene);
 
+        // Apply z-index fixes
         setTimeout(forceVideoFullscreen, 300);
+        setTimeout(nuclearZIndexFix, 1000);
 
         // Setup tap to place
         setupPlacement(scene);
@@ -181,7 +231,7 @@
             return;
         }
 
-        // 🔥 FIXED: Clearer placement logic
+        // 🔥 FIXED: Clearer placement logic with better position calculation
         const placeModel = function(event) {
             // Get camera position and direction
             const camera = document.querySelector('a-entity[camera]');
@@ -245,15 +295,15 @@
     // ==========================================
     function setupModelSwitching() {
         const models = {
-            crow: 'crow-model',
             car: 'car-model',
+            crow: 'crow-model',
             crystal: 'crystal-model',
             solar: 'solar-model',
             rocket: 'rocket-model'
         };
 
-        // 🔥 FIXED: Default to crow
-        let currentModel = 'crow';
+        // 🔥 FIXED: Default to car (since car.glb now exists)
+        let currentModel = 'car';
 
         modelBtns.forEach(btn => {
             btn.addEventListener('click', function(e) {
@@ -280,9 +330,9 @@
             });
         });
 
-        // 🔥 FIXED: Set crow as active initially
+        // 🔥 FIXED: Set car as active initially
         modelBtns.forEach(btn => {
-            if (btn.dataset.model === 'crow') {
+            if (btn.dataset.model === 'car') {
                 btn.classList.add('active');
             } else {
                 btn.classList.remove('active');
@@ -428,5 +478,5 @@
 
     console.log('[AR] App ready - markerless mode');
     console.log('[AR] Models: car.glb, animated_crow/scene.gltf, and procedural models');
-    console.log('[AR] Default model: Crow');
+    console.log('[AR] Default model: Car');
 })();
