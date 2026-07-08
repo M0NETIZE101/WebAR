@@ -101,44 +101,43 @@
         );
 
         scene.innerHTML = `
-            <!-- Hit testing for markerless placement -->
-            <a-entity id="hit-test" hit-testing="enabled: true;"></a-entity>
+            <!-- 🔥 FIXED: Removed non-existent hit-testing component -->
             
             <!-- Model container - placed on tap -->
             <a-entity id="model-container" position="0 0 -1" visible="false">
                 
-                <!-- 🚗 CAR MODEL (from car.glb file) -->
+                <!-- 🚗 CAR MODEL -->
                 <a-entity 
                     id="car-model" 
-                    gltf-model="url(./car.glb)" 
+                    gltf-model="url(car.glb)" 
                     scale="0.15 0.15 0.15" 
                     rotation="0 0 0"
-                    animation-mixer
+                    animation-mixer="clip: *; loop: repeat"
                 ></a-entity>
                 
-                <!-- 🐦 CROW MODEL (from models/animated_crow/scene.gltf) -->
+                <!-- 🐦 CROW MODEL (FIXED PATH - removed ./) -->
                 <a-entity 
                     id="crow-model" 
-                    gltf-model="url(./models/animated_crow/scene.gltf)" 
+                    gltf-model="url(models/animated_crow/scene.gltf)" 
                     scale="0.5 0.5 0.5" 
                     rotation="0 0 0"
-                    animation-mixer
+                    animation-mixer="clip: *; loop: repeat"
                 ></a-entity>
                 
-                <!-- 💎 CRYSTAL MODEL (procedural) -->
+                <!-- 💎 CRYSTAL MODEL -->
                 <a-entity id="crystal-model" visible="false">
                     <a-box position="0 0.5 0" scale="0.3 0.3 0.3" material="color: #00ffaa; shader: flat;"></a-box>
                     <a-torus-knot position="0 0.3 0" scale="0.2 0.2 0.2" material="color: #00c8ff; wireframe: true;"></a-torus-knot>
                 </a-entity>
                 
-                <!-- 🌞 SOLAR SYSTEM MODEL (procedural) -->
+                <!-- 🌞 SOLAR SYSTEM MODEL -->
                 <a-entity id="solar-model" visible="false">
                     <a-sphere position="0 0.5 0" scale="0.15 0.15 0.15" material="color: #ffaa00;"></a-sphere>
                     <a-torus position="0 0.5 0" scale="0.3 0.3 0.3" rotation="90 0 0" material="color: #ffffff; transparent: true; opacity: 0.2;"></a-torus>
                     <a-torus position="0 0.5 0" scale="0.4 0.4 0.4" rotation="90 0 0" material="color: #ffffff; transparent: true; opacity: 0.1;"></a-torus>
                 </a-entity>
                 
-                <!-- 🚀 ROCKET MODEL (procedural) -->
+                <!-- 🚀 ROCKET MODEL -->
                 <a-entity id="rocket-model" visible="false">
                     <a-cone position="0 0.6 0" scale="0.1 0.2 0.1" material="color: #ff2d2d;"></a-cone>
                     <a-cylinder position="0 0.3 0" scale="0.08 0.2 0.08" material="color: #eeeeee;"></a-cylinder>
@@ -169,6 +168,16 @@
 
         const canvas = document.querySelector('canvas');
         if (!canvas) return;
+
+        // 🔥 FIXED: WebGL context loss handling
+        canvas.addEventListener('webglcontextlost', function(event) {
+            event.preventDefault();
+            console.log('[AR] WebGL context lost - attempting recovery');
+            showToast('AR paused. Reloading...', 3000);
+            setTimeout(() => {
+                location.reload();
+            }, 3000);
+        });
 
         let isPlaced = false;
 
@@ -222,7 +231,8 @@
             rocket: 'rocket-model'
         };
 
-        let currentModel = 'car';
+        // 🔥 FIXED: Default to crow if car.glb doesn't exist
+        let currentModel = 'crow';  // Changed from 'car'
 
         modelBtns.forEach(btn => {
             btn.addEventListener('click', function(e) {
@@ -374,5 +384,4 @@
 
     console.log('[AR] App ready - markerless mode');
     console.log('[AR] Models: car.glb, animated_crow/scene.gltf, and procedural models');
-    console.log('[AR] Path: ./models/animated_crow/scene.gltf');
 })();
