@@ -33,7 +33,15 @@
             <h2>🦕 AR Pteradactal</h2>
             <p>Place the QR code in view<br>to see the Pteradactal come to life!</p>
             <button id="start-ar-btn">📷 Start AR</button>
-            <p id="permission-status" style="margin-top: 15px; font-size: 14px; opacity: 0.7;"></p>
+            <div id="status-container" style="margin-top: 15px;">
+                <p id="permission-status" style="font-size: 14px; opacity: 0.7;"></p>
+                <div id="ar-progress" style="display: none; margin-top: 10px;">
+                    <div style="width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
+                        <div id="ar-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #00d4ff, #0072ff); transition: width 0.3s;"></div>
+                    </div>
+                    <p id="ar-progress-text" style="font-size: 12px; opacity: 0.5; margin-top: 5px;">Initializing...</p>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -57,7 +65,6 @@
             modelPath: './models/dinosaur/Pteradactal.glb',
             modelScale: 0.5,
             modelPosition: new THREE.Vector3(0, 0, -0.5),
-            arFeatures: ['hit-test', 'local-floor']
         };
         
         // ===== DOM REFS =====
@@ -69,6 +76,9 @@
         const statusMsg = document.getElementById('status-message');
         const debugInfo = document.getElementById('debug-info');
         const container = document.getElementById('ar-container');
+        const arProgress = document.getElementById('ar-progress');
+        const arProgressBar = document.getElementById('ar-progress-bar');
+        const arProgressText = document.getElementById('ar-progress-text');
         
         // ===== STATE =====
         let scene, camera, renderer;
@@ -76,6 +86,7 @@
         let arSession = null;
         let isRunning = false;
         let hasCameraPermission = false;
+        let isArStarting = false;
         
         // ===== DEBUG =====
         function debug(message) {
@@ -95,11 +106,18 @@
             if (type === 'error') {
                 setTimeout(() => {
                     statusMsg.className = '';
-                }, 5000);
+                }, 8000);
             }
         }
         
-        // ===== PERMISSION CHECK =====
+        // ===== UPDATE AR PROGRESS =====
+        function updateARProgress(percent, text) {
+            arProgress.style.display = 'block';
+            arProgressBar.style.width = percent + '%';
+            arProgressText.textContent = text;
+        }
+        
+        // ===== REQUEST CAMERA PERMISSION =====
         async function requestCameraPermission() {
             debug('📷 Requesting camera permission...');
             permissionStatus.textContent = '📷 Requesting camera access...';
@@ -107,7 +125,6 @@
             startBtn.disabled = true;
             
             try {
-                // Try to get camera stream (this triggers permission prompt)
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         facingMode: 'environment',
@@ -116,7 +133,6 @@
                     }
                 });
                 
-                // If we get here, permission was granted
                 hasCameraPermission = true;
                 debug('✅ Camera permission granted!');
                 permissionStatus.textContent = '✅ Camera access granted!';
@@ -124,9 +140,7 @@
                 startBtn.textContent = '📷 Start AR';
                 startBtn.disabled = false;
                 
-                // Stop the stream (we'll restart it for AR)
                 stream.getTracks().forEach(track => track.stop());
-                
                 return true;
                 
             } catch (error) {
@@ -210,7 +224,6 @@
                         model.scale.set(CONFIG.modelScale, CONFIG.modelScale, CONFIG.modelScale);
                         model.position.copy(CONFIG.modelPosition);
                         
-                        // Setup animation
                         if (gltf.animations && gltf.animations.length > 0) {
                             const mixer = new THREE.AnimationMixer(model);
                             const action = mixer.clipAction(gltf.animations[0]);
@@ -219,7 +232,6 @@
                             debug('🎬 Animation playing');
                         }
                         
-                        // Process materials
                         model.traverse((node) => {
                             if (node.isMesh) {
                                 node.castShadow = true;
@@ -249,130 +261,134 @@
         
         // ===== START AR =====
         async function startAR() {
+            if (isArStarting) return;
+            isArStarting = true;
+            
             debug('🚀 Starting AR...');
             showStatus('📷 Starting AR...', '');
             startBtn.textContent = '⏳ Starting...';
             startBtn.disabled = true;
             
+            // Show progress
+            arProgress.style.display = 'block';
+            updateARProgress(10, 'Checking AR support...');
+            
             try {
-                // STEP 1: Check WebXR
-                debug('Checking WebXR support...');
+                // Step 1: Check WebXR
+                updateARProgress(20, 'Checking WebXR...');
                 if (!navigator.xr) {
-                    throw new Error('WebXR not supported on this browser');
+                    throw new Error('WebXR not supported');
                 }
                 
-                // STEP 2: Check if AR is supported
-                debug('Checking AR support...');
+                // Step 2: Check AR support
+                updateARProgress(30, 'Checking AR support...');
                 let supported = false;
                 try {
                     supported = await navigator.xr.isSessionSupported('immersive-ar');
                 } catch (e) {
-                    debug('❌ Error checking AR support: ' + e.message);
-                    throw new Error('Cannot check AR support: ' + e.message);
+                    throw new Error('Cannot check AR support');
                 }
                 
                 if (!supported) {
-                    throw new Error('AR is not supported on this device. Make sure you have ARCore/ARKit.');
+                    throw new Error('AR not supported on this device');
                 }
                 debug('✅ AR is supported');
                 
-                // STEP 3: Make sure we have camera permission
+                // Step 3: Check camera permission
+                updateARProgress(40, 'Checking camera permission...');
                 if (!hasCameraPermission) {
-                    debug('Requesting camera permission...');
                     const granted = await requestCameraPermission();
                     if (!granted) {
-                        throw new Error('Camera permission is required for AR');
+                        throw new Error('Camera permission required');
                     }
                 }
                 
-                // STEP 4: Create and click AR button
+                // Step 4: Create AR session with proper options
+                updateARProgress(50, 'Creating AR session...');
                 debug('Creating AR session...');
-                showStatus('🔍 Starting AR session...', '');
                 
-                const arButton = ARButton.createButton(renderer, {
-                    requiredFeatures: CONFIG.arFeatures,
-                    optionalFeatures: ['dom-overlay'],
-                    domOverlay: { root: document.body },
-                    onSessionStarted: (session) => {
-                        debug('✅ AR Session started!');
-                        arSession = session;
-                        isRunning = true;
-                        showStatus('✅ AR active! Scanning for QR...', 'success');
-                        
-                        // Add model to scene
-                        if (model) {
-                            // Add model to scene
-                            scene.add(model);
-                            model.visible = true;
-                            debug('✅ Model added to AR scene');
-                            
-                            // Scale animation when model appears
-                            model.scale.set(0, 0, 0);
-                            animateScale(model, 0, CONFIG.modelScale, 500);
-                        }
-                        
-                        // Animation loop
-                        renderer.setAnimationLoop(() => {
-                            if (model && model.userData && model.userData.mixer) {
-                                model.userData.mixer.update(0.016);
-                            }
-                            renderer.render(scene, camera);
-                        });
-                        
-                        // Hide instructions
-                        instructions.style.display = 'none';
-                        startBtn.textContent = '✅ AR Active';
-                    },
-                    onSessionEnded: () => {
-                        debug('⏹️ AR Session ended');
-                        isRunning = false;
-                        showStatus('AR session ended', '');
-                        renderer.setAnimationLoop(null);
-                        startBtn.textContent = '📷 Restart AR';
-                        startBtn.disabled = false;
-                    },
-                    onError: (error) => {
-                        debug('❌ AR Error: ' + error.message);
-                        showStatus('❌ AR Error: ' + error.message, 'error');
-                        startBtn.textContent = '🔄 Retry';
-                        startBtn.disabled = false;
-                        throw error;
+                // Create a direct session without ARButton
+                const session = await navigator.xr.requestSession('immersive-ar', {
+                    requiredFeatures: ['local-floor'],
+                    optionalFeatures: ['hit-test', 'dom-overlay'],
+                    domOverlay: { root: document.body }
+                });
+                
+                debug('✅ AR Session created!');
+                arSession = session;
+                isRunning = true;
+                updateARProgress(70, 'Setting up AR renderer...');
+                
+                // Set up the renderer for XR
+                renderer.xr.setSession(session);
+                
+                // Add model to scene
+                if (model) {
+                    scene.add(model);
+                    model.visible = true;
+                    // Scale animation
+                    model.scale.set(0, 0, 0);
+                    animateScale(model, 0, CONFIG.modelScale, 500);
+                    debug('✅ Model added to scene');
+                }
+                
+                updateARProgress(90, 'AR ready!');
+                showStatus('✅ AR active!', 'success');
+                
+                // Hide instructions
+                instructions.style.display = 'none';
+                startBtn.textContent = '✅ AR Active';
+                
+                // Start the render loop
+                renderer.setAnimationLoop(() => {
+                    if (model && model.userData && model.userData.mixer) {
+                        model.userData.mixer.update(0.016);
+                    }
+                    renderer.render(scene, camera);
+                });
+                
+                // Handle session end
+                session.addEventListener('end', () => {
+                    debug('⏹️ AR Session ended');
+                    isRunning = false;
+                    renderer.setAnimationLoop(null);
+                    showStatus('AR session ended', '');
+                    startBtn.textContent = '📷 Restart AR';
+                    startBtn.disabled = false;
+                    isArStarting = false;
+                    instructions.style.display = 'flex';
+                });
+                
+                // Handle visibility change (pause when tab hidden)
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden && isRunning) {
+                        debug('⏸️ Tab hidden - pausing AR');
+                    } else if (!document.hidden && isRunning) {
+                        debug('▶️ Tab visible - resuming AR');
                     }
                 });
                 
-                // Add button to DOM and click it
-                arButton.id = 'ar-button';
-                arButton.style.position = 'fixed';
-                arButton.style.bottom = '100px';
-                arButton.style.left = '50%';
-                arButton.style.transform = 'translateX(-50%)';
-                arButton.style.zIndex = '150';
-                arButton.style.display = 'none'; // Hide it, we'll click it programmatically
-                document.body.appendChild(arButton);
-                
-                // Click the button to trigger AR session
-                debug('Clicking AR button...');
-                arButton.click();
-                
-                // Remove button after a moment
+                updateARProgress(100, '✅ AR Active!');
                 setTimeout(() => {
-                    if (arButton && arButton.parentNode) {
-                        arButton.remove();
-                    }
-                }, 3000);
+                    arProgress.style.display = 'none';
+                }, 1000);
+                
+                isArStarting = false;
                 
             } catch (error) {
                 debug('❌ AR start failed: ' + error.message);
                 showStatus('❌ ' + error.message, 'error');
                 startBtn.textContent = '🔄 Retry';
                 startBtn.disabled = false;
+                isArStarting = false;
+                arProgress.style.display = 'none';
                 
-                // Show fallback option
+                // Show fallback
                 showFallback(error.message);
             }
         }
         
-        // ===== SCALE ANIMATION =====
+        // ===== ANIMATE SCALE =====
         function animateScale(object, from, to, duration) {
             const startTime = Date.now();
             
@@ -393,7 +409,6 @@
         
         // ===== FALLBACK =====
         function showFallback(message) {
-            // Create fallback UI if it doesn't exist
             let fallback = document.getElementById('fallback');
             if (!fallback) {
                 fallback = document.createElement('div');
@@ -419,10 +434,10 @@
                     <h2 style="color: #ff6b6b; margin-bottom: 15px;">⚠️ AR Not Available</h2>
                     <p style="opacity: 0.8; margin-bottom: 20px; line-height: 1.6;">
                         ${message}<br><br>
-                        Try these solutions:
-                        <br>• Use Chrome on Android
-                        <br>• Use Safari on iOS 15+
-                        <br>• Make sure you're on HTTPS
+                        <strong>Try these solutions:</strong>
+                        <br>• Use <strong>Chrome</strong> on Android
+                        <br>• Use <strong>Safari</strong> on iOS 15+
+                        <br>• Make sure you're on <strong>HTTPS</strong>
                         <br>• Check camera permissions in settings
                     </p>
                     <a href="desktop-viewer.html" style="display: inline-block; padding: 12px 30px; background: #00d4ff; color: #000; text-decoration: none; border-radius: 10px; font-weight: bold; margin: 10px;">View 3D Model</a>
@@ -446,7 +461,9 @@
         
         // ===== CHECK HTTPS =====
         function checkHTTPS() {
-            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            if (window.location.protocol !== 'https:' && 
+                window.location.hostname !== 'localhost' && 
+                window.location.hostname !== '127.0.0.1') {
                 console.warn('⚠️ Not running on HTTPS. AR may not work.');
                 showStatus('⚠️ Use HTTPS for AR', 'error');
                 return false;
@@ -460,7 +477,6 @@
             debug('📱 Device: ' + navigator.userAgent);
             debug('🔗 Protocol: ' + window.location.protocol);
             
-            // Check HTTPS
             checkHTTPS();
             
             try {
@@ -469,36 +485,36 @@
                 await loadModel();
                 
                 // Check camera permission status
-                debug('Checking camera permission status...');
                 try {
-                    const permissionStatus = await navigator.permissions.query({ name: 'camera' });
-                    debug('Camera permission state: ' + permissionStatus.state);
-                    
-                    if (permissionStatus.state === 'granted') {
+                    const permStatus = await navigator.permissions?.query({ name: 'camera' });
+                    if (permStatus?.state === 'granted') {
                         hasCameraPermission = true;
+                        permissionStatus.textContent = '✅ Camera permission granted';
+                        permissionStatus.style.color = '#00d4ff';
+                    } else {
+                        permissionStatus.textContent = '📷 Click "Start AR" to request camera access';
+                        permissionStatus.style.color = '#ffaa00';
                     }
                 } catch (e) {
-                    // Permissions API might not be available
-                    debug('⚠️ Permissions API not available, will request on start');
+                    permissionStatus.textContent = '📷 Camera permission required';
                 }
                 
-                // Show instructions
                 instructions.style.display = 'flex';
-                permissionStatus.textContent = hasCameraPermission ? '✅ Camera permission granted' : '📷 Camera permission required';
-                permissionStatus.style.color = hasCameraPermission ? '#00d4ff' : '#ffaa00';
+                debug('✅ Ready!');
                 
-                debug('✅ Ready! Waiting for user to start AR.');
-                
-                // Start AR button - request permission first
+                // Start AR button
                 startBtn.addEventListener('click', async () => {
-                    // Request camera permission first
-                    const granted = await requestCameraPermission();
-                    if (granted) {
+                    // If we don't have permission, request it first
+                    if (!hasCameraPermission) {
+                        const granted = await requestCameraPermission();
+                        if (granted) {
+                            await startAR();
+                        }
+                    } else {
                         await startAR();
                     }
                 });
                 
-                // Resize
                 window.addEventListener('resize', onResize);
                 
             } catch (error) {
