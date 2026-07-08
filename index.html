@@ -2,11 +2,109 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>WebAR Pteradactal - QR Tracking</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>AR Dinosaur</title>
+    <style>
+        * { margin: 0; padding: 0; }
+        body { 
+            background: #000; 
+            overflow: hidden; 
+            font-family: Arial;
+            touch-action: none;
+        }
+        
+        #loading {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1000;
+            color: white;
+        }
+        
+        #loading .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #start-btn {
+            position: fixed;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 18px 50px;
+            background: linear-gradient(135deg, #00d4ff, #0072ff);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 100;
+            box-shadow: 0 10px 30px rgba(0,114,255,0.4);
+            display: none;
+        }
+        
+        #info {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            border-radius: 10px;
+            z-index: 100;
+            font-size: 14px;
+            text-align: center;
+            display: none;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        #info.show { display: block; }
+        #info.success { border-color: #00ff00; color: #00ff00; }
+        #info.error { border-color: #ff4444; color: #ff4444; }
+        
+        #ar-container {
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <p id="loading-text">Loading...</p>
+        <p style="font-size: 12px; opacity: 0.5; margin-top: 20px;">Make sure you're on a phone</p>
+    </div>
     
-    <link rel="stylesheet" href="css/style.css" />
+    <!-- AR Container -->
+    <div id="ar-container"></div>
     
+    <!-- Start Button -->
+    <button id="start-btn">📷 Start AR</button>
+    
+    <!-- Info Message -->
+    <div id="info">Ready</div>
+
     <script type="importmap">
         {
             "imports": {
@@ -15,45 +113,170 @@
             }
         }
     </script>
-</head>
-<body>
-    <div id="loading-screen">
-        <div class="loader-container">
-            <div class="loader"></div>
-            <p id="loading-text">Initializing AR...</p>
-            <div id="debug-info" style="color: #ff6b6b; font-size: 12px; margin-top: 20px; max-width: 300px; word-wrap: break-word;"></div>
-        </div>
-    </div>
 
-    <div id="instructions" style="display: none;">
-        <div class="instruction-box">
-            <h2>📱 Point your camera at the QR code</h2>
-            <p>Scan the QR marker to see the Pteradactal in AR</p>
-            <button id="start-ar-btn">Start AR Experience</button>
-            <div style="margin-top: 15px; font-size: 12px; opacity: 0.7;">
-                <p>⚠️ Make sure you're on a mobile device with AR support</p>
-                <p>📷 Camera permission will be requested</p>
-            </div>
-        </div>
-    </div>
+    <script type="module">
+        import * as THREE from 'three';
+        import { ARButton } from 'three/addons/webxr/ARButton.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-    <!-- Fallback for non-AR devices -->
-    <div id="fallback" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: rgba(0,0,0,0.9); padding: 30px; border-radius: 20px; text-align: center; color: white; max-width: 90%;">
-        <h2 style="color: #ff6b6b;">⚠️ AR Not Available</h2>
-        <p style="margin: 20px 0;">Your device doesn't support WebXR AR.</p>
-        <p style="font-size: 14px; opacity: 0.7;">This feature requires:</p>
-        <ul style="text-align: left; margin: 10px 0; padding-left: 20px; font-size: 14px; opacity: 0.7;">
-            <li>📱 A smartphone (not a laptop/desktop)</li>
-            <li>🔐 HTTPS connection</li>
-            <li>📷 Camera access</li>
-            <li>🔧 ARCore (Android) or ARKit (iOS)</li>
-        </ul>
-        <button id="fallback-btn" style="margin-top: 20px; padding: 12px 30px; background: #00d4ff; border: none; border-radius: 10px; color: #000; font-weight: bold; cursor: pointer;">View Desktop Version</button>
-    </div>
+        // DOM elements
+        const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loading-text');
+        const startBtn = document.getElementById('start-btn');
+        const info = document.getElementById('info');
+        const container = document.getElementById('ar-container');
 
-    <div id="ar-container"></div>
-    <div id="status-message"></div>
+        let scene, camera, renderer;
+        let model = null;
+        let isRunning = false;
 
-    <script type="module" src="js/main.js"></script>
+        function showInfo(text, type = '') {
+            info.textContent = text;
+            info.className = 'show ' + type;
+            console.log('📱', text);
+        }
+
+        function hideLoading() {
+            loading.style.display = 'none';
+            startBtn.style.display = 'block';
+            showInfo('Tap "Start AR" to begin', '');
+        }
+
+        // Setup scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+
+        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 1.6, 0);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.xr.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        // Lights
+        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambient);
+        
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        dirLight.position.set(0, 5, 5);
+        scene.add(dirLight);
+        
+        const fillLight = new THREE.DirectionalLight(0x4488ff, 0.3);
+        fillLight.position.set(-5, 0, 5);
+        scene.add(fillLight);
+
+        // Load model
+        loadingText.textContent = 'Loading dinosaur...';
+        const loader = new GLTFLoader();
+        
+        loader.load(
+            './models/dinosaur/Pteradactal.glb',
+            (gltf) => {
+                model = gltf.scene;
+                model.scale.set(0.5, 0.5, 0.5);
+                model.position.set(0, 0, -0.5);
+                
+                // Play animation
+                if (gltf.animations && gltf.animations.length > 0) {
+                    const mixer = new THREE.AnimationMixer(model);
+                    const action = mixer.clipAction(gltf.animations[0]);
+                    action.play();
+                    model.userData.mixer = mixer;
+                }
+                
+                loadingText.textContent = '✅ Model loaded!';
+                setTimeout(hideLoading, 500);
+            },
+            (progress) => {
+                const pct = Math.round((progress.loaded / progress.total) * 100);
+                loadingText.textContent = `Loading... ${pct}%`;
+            },
+            (error) => {
+                console.error('Model error:', error);
+                loadingText.textContent = '❌ Failed to load model';
+                showInfo('Error loading model: ' + error.message, 'error');
+            }
+        );
+
+        // Start AR
+        startBtn.addEventListener('click', async () => {
+            startBtn.style.display = 'none';
+            showInfo('Starting AR...', '');
+            
+            try {
+                // Check WebXR support first
+                if (!navigator.xr) {
+                    throw new Error('WebXR not supported');
+                }
+                
+                const isSupported = await navigator.xr.isSessionSupported('immersive-ar');
+                if (!isSupported) {
+                    throw new Error('AR not supported on this device');
+                }
+                
+                showInfo('📷 Requesting camera...', '');
+                
+                // Create AR button
+                const arButton = ARButton.createButton(renderer, {
+                    requiredFeatures: ['hit-test', 'local-floor'],
+                    onSessionStarted: (session) => {
+                        isRunning = true;
+                        showInfo('✅ Camera active! Scanning for QR...', 'success');
+                        console.log('AR Session started!');
+                        
+                        // Add model to scene
+                        if (model) {
+                            scene.add(model);
+                            model.visible = true;
+                            
+                            // Animate
+                            renderer.setAnimationLoop(() => {
+                                if (model.userData && model.userData.mixer) {
+                                    model.userData.mixer.update(0.016);
+                                }
+                                renderer.render(scene, camera);
+                            });
+                        }
+                    },
+                    onSessionEnded: () => {
+                        isRunning = false;
+                        showInfo('AR ended', '');
+                        renderer.setAnimationLoop(null);
+                    },
+                    onError: (error) => {
+                        console.error('AR Error:', error);
+                        showInfo('❌ ' + error.message, 'error');
+                        startBtn.style.display = 'block';
+                        startBtn.textContent = '🔄 Retry';
+                    }
+                });
+                
+                // Click the AR button
+                arButton.click();
+                
+                // Hide after click
+                setTimeout(() => {
+                    if (arButton.parentNode) {
+                        arButton.style.display = 'none';
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showInfo('❌ ' + error.message, 'error');
+                startBtn.style.display = 'block';
+                startBtn.textContent = '🔄 Retry';
+            }
+        });
+
+        // Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
 </body>
 </html>
