@@ -18,6 +18,7 @@
 
     let toastTimer;
     let isARActive = false;
+    let isPlaced = false;
 
     // ==========================================
     // TOAST NOTIFICATIONS
@@ -100,44 +101,45 @@
             'sourceType: webcam; debugUIEnabled: false; detectionMode: mono; trackingMethod: best;'
         );
 
+        // 🔥 FIXED: Only crow is visible by default, others hidden
         scene.innerHTML = `
-            <!-- 🔥 FIXED: Removed non-existent hit-testing component -->
-            
-            <!-- Model container - placed on tap -->
+            <!-- Model container - starts hidden, becomes visible on tap -->
             <a-entity id="model-container" position="0 0 -1" visible="false">
                 
-                <!-- 🚗 CAR MODEL -->
-                <a-entity 
-                    id="car-model" 
-                    gltf-model="url(car.glb)" 
-                    scale="0.15 0.15 0.15" 
-                    rotation="0 0 0"
-                    animation-mixer="clip: *; loop: repeat"
-                ></a-entity>
-                
-                <!-- 🐦 CROW MODEL (FIXED PATH - removed ./) -->
+                <!-- 🐦 CROW MODEL (DEFAULT - VISIBLE) -->
                 <a-entity 
                     id="crow-model" 
                     gltf-model="url(models/animated_crow/scene.gltf)" 
                     scale="0.5 0.5 0.5" 
                     rotation="0 0 0"
                     animation-mixer="clip: *; loop: repeat"
+                    visible="true"
                 ></a-entity>
                 
-                <!-- 💎 CRYSTAL MODEL -->
+                <!-- 🚗 CAR MODEL (HIDDEN) -->
+                <a-entity 
+                    id="car-model" 
+                    gltf-model="url(car.glb)" 
+                    scale="0.15 0.15 0.15" 
+                    rotation="0 0 0"
+                    animation-mixer="clip: *; loop: repeat"
+                    visible="false"
+                ></a-entity>
+                
+                <!-- 💎 CRYSTAL MODEL (HIDDEN) -->
                 <a-entity id="crystal-model" visible="false">
                     <a-box position="0 0.5 0" scale="0.3 0.3 0.3" material="color: #00ffaa; shader: flat;"></a-box>
                     <a-torus-knot position="0 0.3 0" scale="0.2 0.2 0.2" material="color: #00c8ff; wireframe: true;"></a-torus-knot>
                 </a-entity>
                 
-                <!-- 🌞 SOLAR SYSTEM MODEL -->
+                <!-- 🌞 SOLAR SYSTEM MODEL (HIDDEN) -->
                 <a-entity id="solar-model" visible="false">
                     <a-sphere position="0 0.5 0" scale="0.15 0.15 0.15" material="color: #ffaa00;"></a-sphere>
                     <a-torus position="0 0.5 0" scale="0.3 0.3 0.3" rotation="90 0 0" material="color: #ffffff; transparent: true; opacity: 0.2;"></a-torus>
                     <a-torus position="0 0.5 0" scale="0.4 0.4 0.4" rotation="90 0 0" material="color: #ffffff; transparent: true; opacity: 0.1;"></a-torus>
                 </a-entity>
                 
-                <!-- 🚀 ROCKET MODEL -->
+                <!-- 🚀 ROCKET MODEL (HIDDEN) -->
                 <a-entity id="rocket-model" visible="false">
                     <a-cone position="0 0.6 0" scale="0.1 0.2 0.1" material="color: #ff2d2d;"></a-cone>
                     <a-cylinder position="0 0.3 0" scale="0.08 0.2 0.08" material="color: #eeeeee;"></a-cylinder>
@@ -153,49 +155,59 @@
 
         setTimeout(forceVideoFullscreen, 300);
 
+        // Setup tap to place
         setupPlacement(scene);
+
+        // Setup model switching
         setupModelSwitching();
 
         return scene;
     }
 
     // ==========================================
-    // TAP TO PLACE
+    // TAP TO PLACE - FIXED
     // ==========================================
     function setupPlacement(scene) {
         const container = document.getElementById('model-container');
-        if (!container) return;
+        if (!container) {
+            console.error('[AR] Container not found!');
+            return;
+        }
 
+        // Get the canvas for click events
         const canvas = document.querySelector('canvas');
-        if (!canvas) return;
+        if (!canvas) {
+            console.error('[AR] Canvas not found!');
+            return;
+        }
 
-        // 🔥 FIXED: WebGL context loss handling
-        canvas.addEventListener('webglcontextlost', function(event) {
-            event.preventDefault();
-            console.log('[AR] WebGL context lost - attempting recovery');
-            showToast('AR paused. Reloading...', 3000);
-            setTimeout(() => {
-                location.reload();
-            }, 3000);
-        });
-
-        let isPlaced = false;
-
+        // 🔥 FIXED: Clearer placement logic
         const placeModel = function(event) {
+            // Get camera position and direction
             const camera = document.querySelector('a-entity[camera]');
-            if (!camera) return;
+            if (!camera) {
+                console.warn('[AR] Camera not found');
+                return;
+            }
 
+            // Get camera's world position and forward direction
             const pos = camera.object3D.position.clone();
             const dir = new THREE.Vector3(0, 0, -1);
             dir.applyQuaternion(camera.object3D.quaternion);
             
+            // Place model 1 meter in front of camera, slightly above ground
             const distance = 1.0;
             const targetPos = pos.clone().add(dir.multiplyScalar(distance));
-            targetPos.y = -0.2;
+            targetPos.y = -0.15; // Slightly above floor level
 
+            // Update container position and make visible
             container.setAttribute('position', targetPos);
             container.setAttribute('visible', 'true');
             
+            // Log for debugging
+            console.log('[AR] Model placed at:', targetPos);
+            
+            // Update UI
             if (!isPlaced) {
                 isPlaced = true;
                 scanHint.classList.add('hidden');
@@ -205,34 +217,43 @@
             }
         };
 
+        // Add click listener
         canvas.addEventListener('click', placeModel);
+        console.log('[AR] Click listener added to canvas');
+
+        // Touch support for mobile
         canvas.addEventListener('touchstart', function(event) {
+            // Prevent default to avoid scrolling
             event.preventDefault();
+            
             const touch = event.touches[0];
             if (!touch) return;
             
+            // Create a simulated click event
             const clickEvent = new MouseEvent('click', {
                 clientX: touch.clientX,
                 clientY: touch.clientY
             });
             canvas.dispatchEvent(clickEvent);
         }, { passive: false });
+
+        console.log('[AR] Tap to place setup complete');
     }
 
     // ==========================================
-    // MODEL SWITCHING
+    // MODEL SWITCHING - FIXED
     // ==========================================
     function setupModelSwitching() {
         const models = {
-            car: 'car-model',
             crow: 'crow-model',
+            car: 'car-model',
             crystal: 'crystal-model',
             solar: 'solar-model',
             rocket: 'rocket-model'
         };
 
-        // 🔥 FIXED: Default to crow if car.glb doesn't exist
-        let currentModel = 'crow';  // Changed from 'car'
+        // 🔥 FIXED: Default to crow
+        let currentModel = 'crow';
 
         modelBtns.forEach(btn => {
             btn.addEventListener('click', function(e) {
@@ -240,9 +261,11 @@
                 const modelKey = this.dataset.model;
                 if (modelKey === currentModel) return;
 
+                // Update button states
                 modelBtns.forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
 
+                // Hide all models, show only the selected one
                 const modelIds = Object.values(models);
                 modelIds.forEach(id => {
                     const el = document.getElementById(id);
@@ -253,7 +276,17 @@
 
                 currentModel = modelKey;
                 showToast('Switched to ' + modelKey.charAt(0).toUpperCase() + modelKey.slice(1));
+                console.log('[AR] Switched to:', modelKey);
             });
+        });
+
+        // 🔥 FIXED: Set crow as active initially
+        modelBtns.forEach(btn => {
+            if (btn.dataset.model === 'crow') {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
         });
     }
 
@@ -295,21 +328,26 @@
         loadingText.textContent = 'Requesting camera...';
 
         try {
+            // Check HTTPS
             if (location.protocol !== 'https:' && 
                 !['localhost', '127.0.0.1', ''].includes(location.hostname)) {
                 throw new Error('HTTPS required. Please use a secure connection.');
             }
 
+            // Check camera API
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 throw new Error('Camera API not supported.');
             }
 
+            // Create scene
             loadingText.textContent = 'Initializing AR...';
             const scene = createScene();
 
+            // Wait for AR system
             loadingText.textContent = 'Starting AR engine...';
             await waitForAR(scene, 15000);
 
+            // AR is ready
             isARActive = true;
             arLoading.classList.remove('active');
             landing.classList.add('hidden');
@@ -318,8 +356,10 @@
             statusDot.classList.add('found');
             statusText.textContent = 'Tap to place';
             
+            // Show hint
             scanHint.classList.remove('hidden');
 
+            // Hide hint after first placement OR after 5 seconds
             const canvas = document.querySelector('canvas');
             if (canvas) {
                 const hideHint = function() {
@@ -331,12 +371,14 @@
                 canvas.addEventListener('touchstart', hideHint, { once: true });
             }
 
+            // Auto-hide hint after 5 seconds
             setTimeout(() => {
                 scanHint.classList.add('hidden');
             }, 5000);
 
             showToast('AR Ready! Tap screen to place model', 2000);
             console.log('[AR] Markerless AR ready!');
+            console.log('[AR] Tap the screen to place the model');
 
         } catch (err) {
             console.error('[AR] Error:', err);
@@ -358,6 +400,7 @@
         if (scene) scene.remove();
         
         isARActive = false;
+        isPlaced = false;
         arOverlay.classList.remove('active');
         landing.classList.remove('hidden');
         statusDot.classList.remove('found');
@@ -371,6 +414,7 @@
     launchBtn.addEventListener('click', startAR);
     backBtn.addEventListener('click', stopAR);
 
+    // Prevent zoom gestures
     document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
     document.addEventListener('touchmove', e => {
         if (e.touches.length > 1) e.preventDefault();
@@ -384,4 +428,5 @@
 
     console.log('[AR] App ready - markerless mode');
     console.log('[AR] Models: car.glb, animated_crow/scene.gltf, and procedural models');
+    console.log('[AR] Default model: Crow');
 })();
