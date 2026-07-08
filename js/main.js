@@ -8,6 +8,10 @@ class WebARApplication {
         console.log('🚀 App starting...');
         this.debug('App initializing...');
         
+        // Check if on mobile
+        this.isMobile = this.checkMobile();
+        this.debug(`Is mobile: ${this.isMobile}`);
+        
         this.scene = new THREE.Scene();
         this.arManager = null;
         this.modelLoader = new ModelLoader();
@@ -23,8 +27,11 @@ class WebARApplication {
             modelPosition: new THREE.Vector3(0, 0, -0.5)
         };
         
-        this.debug(`Config: ${JSON.stringify(this.config)}`);
         this.init();
+    }
+    
+    checkMobile() {
+        return /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent);
     }
     
     debug(message) {
@@ -52,8 +59,12 @@ class WebARApplication {
             this.debug(`Step 3: WebXR supported: ${supported}`);
             
             if (!supported) {
-                this.showError('WebXR not supported on this device');
                 this.debug('❌ WebXR NOT supported!');
+                if (!this.isMobile) {
+                    this.showFallback('You are on a desktop/laptop. WebXR AR requires a mobile device.');
+                } else {
+                    this.showFallback('Your device does not support WebXR AR. Make sure you are using HTTPS and have ARCore/ARKit.');
+                }
                 return;
             }
             
@@ -98,12 +109,33 @@ class WebARApplication {
             console.error('❌ Initialization error:', error);
             this.debug(`❌ ERROR: ${error.message}`);
             this.showError('Failed to initialize AR: ' + error.message);
+            this.showFallback('Error loading: ' + error.message);
+        }
+    }
+    
+    showFallback(message) {
+        const fallback = document.getElementById('fallback');
+        if (fallback) {
+            fallback.style.display = 'block';
+            fallback.innerHTML = `
+                <h2 style="color: #ff6b6b;">⚠️ ${message}</h2>
+                <p style="margin: 20px 0;">You can still view the 3D model in the desktop viewer.</p>
+                <button id="fallback-btn" style="margin-top: 20px; padding: 12px 30px; background: #00d4ff; border: none; border-radius: 10px; color: #000; font-weight: bold; cursor: pointer;">View 3D Model</button>
+            `;
+            
+            document.getElementById('fallback-btn').addEventListener('click', () => {
+                window.location.href = 'desktop-viewer.html';
+            });
         }
     }
     
     onARSessionStarted() {
         this.debug('✅ AR Session Started!');
         this.updateLoadingStatus('AR Active!');
+        
+        // Hide fallback if visible
+        const fallback = document.getElementById('fallback');
+        if (fallback) fallback.style.display = 'none';
         
         this.modelMap.forEach((model, markerId) => {
             if (model) {
@@ -129,6 +161,7 @@ class WebARApplication {
         console.error('AR Error:', error);
         this.debug(`❌ AR Error: ${error.message}`);
         this.showError(error.message);
+        this.showFallback('AR Error: ' + error.message);
     }
     
     handleQRDetection(qrData) {
@@ -224,21 +257,24 @@ class WebARApplication {
         try {
             this.debug('Starting AR session...');
             this.updateLoadingStatus('Starting AR...');
-            // Show loading screen again briefly
+            
+            // Show loading screen again
             const loadingScreen = document.getElementById('loading-screen');
             if (loadingScreen) {
                 loadingScreen.style.display = 'flex';
                 loadingScreen.classList.remove('hidden');
             }
+            
             await this.arManager.startARSession();
-            // Hide loading after session starts
+            
             setTimeout(() => {
                 this.hideLoadingScreen();
-            }, 2000);
+            }, 3000);
         } catch (error) {
             console.error('Failed to start AR:', error);
             this.debug(`❌ Failed to start AR: ${error.message}`);
             this.showError('Failed to start AR: ' + error.message);
+            this.showFallback('AR failed to start: ' + error.message);
         }
     }
     

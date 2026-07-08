@@ -11,6 +11,7 @@ export class ARManager {
         this.session = null;
         this.isRunning = false;
         this.models = [];
+        this.arButton = null;
         
         this.setupScene();
         this.setupRenderer();
@@ -109,7 +110,11 @@ export class ARManager {
         }
         
         try {
-            const arButton = ARButton.createButton(this.renderer, {
+            // Show a message that we're trying to start
+            this.showStatus('📷 Requesting camera access...', '');
+            
+            // Create AR button
+            this.arButton = ARButton.createButton(this.renderer, {
                 requiredFeatures: ['hit-test', 'local-floor'],
                 optionalFeatures: ['dom-overlay'],
                 domOverlay: { root: document.body },
@@ -117,6 +122,7 @@ export class ARManager {
                     console.log('✅ AR Session Started!');
                     this.session = session;
                     this.isRunning = true;
+                    this.showStatus('✅ Camera active! Scanning for QR...', 'success');
                     
                     if (this.options.onSessionStarted) {
                         this.options.onSessionStarted();
@@ -127,23 +133,55 @@ export class ARManager {
                 onSessionEnded: () => {
                     console.log('⏹️ AR Session Ended');
                     this.isRunning = false;
+                    this.showStatus('AR session ended', '');
                     if (this.options.onSessionEnded) {
                         this.options.onSessionEnded();
+                    }
+                },
+                onError: (error) => {
+                    console.error('❌ AR Error:', error);
+                    this.showStatus('❌ AR Error: ' + error.message, 'error');
+                    if (this.options.onError) {
+                        this.options.onError(error);
                     }
                 }
             });
             
+            // Add the button to the DOM (it's hidden but will trigger the AR request)
+            document.body.appendChild(this.arButton);
+            
+            // Click the button programmatically
             console.log('🖱️ Clicking AR button...');
-            arButton.click();
+            this.arButton.click();
             console.log('✅ AR button clicked');
+            
+            // Show a status that we're waiting for permission
+            this.showStatus('⏳ Waiting for camera permission...', '');
+            
+            // Hide the button after click
+            setTimeout(() => {
+                if (this.arButton) {
+                    this.arButton.style.display = 'none';
+                }
+            }, 1000);
             
         } catch (error) {
             console.error('❌ Failed to start AR session:', error);
+            this.showStatus('❌ Failed: ' + error.message, 'error');
             if (this.options.onError) {
                 this.options.onError(error);
             }
             throw error;
         }
+    }
+    
+    showStatus(message, type = '') {
+        const statusEl = document.getElementById('status-message');
+        if (statusEl) {
+            statusEl.textContent = message;
+            statusEl.className = 'visible ' + type;
+        }
+        console.log('📱 Status:', message);
     }
     
     addModelToScene(model) {
@@ -208,6 +246,9 @@ export class ARManager {
         this.renderer.setAnimationLoop(null);
         if (this.session) {
             this.session.end();
+        }
+        if (this.arButton) {
+            this.arButton.remove();
         }
     }
 }
