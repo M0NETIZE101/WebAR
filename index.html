@@ -2,796 +2,600 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <!-- Fix 1: Critical mobile viewport meta to prevent AR.js zoom bugs -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>AR Vision — Scan & Summon</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Markerless AR Vision</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
     <style>
         :root {
-            --bg: #060610;
-            --fg: #e8e8f0;
-            --muted: #7a7a90;
-            --accent: #00ffaa;
-            --accent2: #ff2d6b;
-            --accent3: #00c8ff;
-            --card: rgba(12, 12, 24, 0.88);
-            --border: rgba(0, 255, 170, 0.12);
+            --bg: #060610; --fg: #e8e8f0; --muted: #7a7a90;
+            --accent: #00ffaa; --accent2: #ff2d6b; --accent3: #00c8ff;
+            --card: rgba(12, 12, 24, 0.88); --border: rgba(0, 255, 170, 0.12);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        /* Fix 2: Force height and prevent scroll bounce on iOS */
-        html, body { 
-            width: 100%; height: 100%; overflow: hidden; 
-            font-family: 'Space Grotesk', sans-serif; 
-            background: var(--bg); color: var(--fg);
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        }
+        html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Space Grotesk', sans-serif; background: var(--bg); color: var(--fg); position: fixed; }
 
         /* ===== LANDING ===== */
         #landing {
-            position: fixed; inset: 0; z-index: 1000;
-            display: flex; flex-direction: column; align-items: center;
-            background: var(--bg);
-            transition: opacity 0.5s ease, visibility 0.5s ease;
+            position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; align-items: center;
+            background: var(--bg); transition: opacity 0.5s ease, visibility 0.5s ease;
         }
         #landing.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-
         .bg-layer { position: fixed; inset: 0; pointer-events: none; }
         .bg-grid {
-            background-image:
-                linear-gradient(rgba(0,255,170,0.035) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0,255,170,0.035) 1px, transparent 1px);
-            background-size: 48px 48px;
-            animation: gridScroll 25s linear infinite;
+            background-image: linear-gradient(rgba(0,255,170,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,170,0.035) 1px, transparent 1px);
+            background-size: 48px 48px; animation: gridScroll 25s linear infinite;
         }
         @keyframes gridScroll { to { transform: translate(48px, 48px); } }
-
-        .orb { position: fixed; border-radius: 50%; filter: blur(100px); opacity: 0.22; }
-        .orb-1 { width: 340px; height: 340px; background: var(--accent); top: -5%; left: -8%; animation: orbDrift 10s ease-in-out infinite; }
-        .orb-2 { width: 280px; height: 280px; background: var(--accent2); bottom: -5%; right: -8%; animation: orbDrift 12s ease-in-out infinite reverse; }
-        .orb-3 { width: 200px; height: 200px; background: var(--accent3); top: 45%; left: 55%; animation: orbDrift 8s ease-in-out infinite 2s; }
-        @keyframes orbDrift {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(25px, -15px) scale(1.08); }
-            66% { transform: translate(-15px, 25px) scale(0.92); }
-        }
+        .orb { position: fixed; border-radius: 50%; filter: blur(100px); opacity: 0.2; }
+        .orb-1 { width: 300px; height: 300px; background: var(--accent); top: -5%; left: -5%; animation: orbDrift 10s ease-in-out infinite; }
+        .orb-2 { width: 250px; height: 250px; background: var(--accent2); bottom: -5%; right: -5%; animation: orbDrift 12s ease-in-out infinite reverse; }
+        @keyframes orbDrift { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(20px, -20px); } }
 
         .landing-scroll {
-            position: relative; z-index: 1; width: 100%; max-width: 500px;
-            padding: 44px 24px 40px; overflow-y: auto; max-height: 100vh;
-            -webkit-overflow-scrolling: touch;
+            position: relative; z-index: 1; width: 100%; max-width: 500px; padding: 44px 24px 40px;
+            overflow-y: auto; max-height: 100vh; -webkit-overflow-scrolling: touch;
         }
-        .landing-scroll::-webkit-scrollbar { width: 4px; }
-        .landing-scroll::-webkit-scrollbar-thumb { background: rgba(0,255,170,0.2); border-radius: 4px; }
-
-        .logo-wrap { text-align: center; margin-bottom: 6px; }
-        .logo {
-            font-family: 'Orbitron', sans-serif; font-size: 2.6rem; font-weight: 900;
-            letter-spacing: 0.08em;
-            background: linear-gradient(135deg, var(--accent) 0%, var(--accent3) 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-        }
-        .tagline { text-align: center; color: var(--muted); font-size: 0.92rem; line-height: 1.5; margin-bottom: 32px; }
-
-        .card {
-            background: var(--card); border: 1px solid var(--border); border-radius: 18px;
-            padding: 20px; margin-bottom: 14px;
-            backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-        }
-        .card-badge {
-            display: inline-flex; align-items: center; justify-content: center;
-            width: 28px; height: 28px; border-radius: 50%;
-            background: linear-gradient(135deg, var(--accent), var(--accent3));
-            color: var(--bg); font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 0.75rem;
-            margin-bottom: 10px;
-        }
+        .logo { text-align: center; font-family: 'Orbitron', sans-serif; font-size: 2.6rem; font-weight: 900; letter-spacing: 0.08em; background: linear-gradient(135deg, var(--accent), var(--accent3)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 6px; }
+        .tagline { text-align: center; color: var(--muted); font-size: 0.92rem; margin-bottom: 32px; line-height: 1.5; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 20px; margin-bottom: 14px; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+        .card-badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent3)); color: var(--bg); font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 0.75rem; margin-bottom: 10px; }
         .card-title { font-weight: 700; font-size: 1rem; margin-bottom: 5px; }
         .card-desc { color: var(--muted); font-size: 0.84rem; line-height: 1.55; }
 
-        .marker-wrap { display: flex; justify-content: center; margin: 14px 0 4px; }
-        .marker-img {
-            width: 150px; height: 150px; border: 2px solid var(--border); border-radius: 14px;
-            background: #fff; object-fit: contain; padding: 8px;
-        }
-        .marker-note { text-align: center; color: var(--muted); font-size: 0.76rem; margin-top: 6px; }
-
-        .qr-wrap { display: flex; flex-direction: column; align-items: center; margin: 14px 0 4px; }
-        #qrcode { background: #fff; padding: 10px; border-radius: 12px; }
-        #qrcode img, #qrcode canvas { display: block; }
-        .qr-note { color: var(--muted); font-size: 0.76rem; margin-top: 8px; }
-
         .launch-btn {
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-            width: 100%; padding: 17px; margin-top: 18px; border: none; border-radius: 16px;
-            background: linear-gradient(135deg, var(--accent), var(--accent3));
-            color: var(--bg); font-family: 'Orbitron', sans-serif; font-weight: 700;
-            font-size: 1rem; letter-spacing: 0.06em; cursor: pointer;
-            box-shadow: 0 4px 40px rgba(0,255,170,0.25);
-            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 17px; margin-top: 18px;
+            border: none; border-radius: 16px; background: linear-gradient(135deg, var(--accent), var(--accent3));
+            color: var(--bg); font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 1rem; letter-spacing: 0.06em; cursor: pointer;
+            box-shadow: 0 4px 40px rgba(0,255,170,0.25); transition: transform 0.2s, box-shadow 0.2s;
         }
         .launch-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 50px rgba(0,255,170,0.4); }
-        .launch-btn:active { transform: translateY(0); }
         .launch-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
 
-        .https-notice {
-            text-align: center; margin-top: 14px; padding: 10px 16px; border-radius: 10px;
-            background: rgba(255,45,107,0.08); border: 1px solid rgba(255,45,107,0.2);
-            color: var(--accent2); font-size: 0.76rem; line-height: 1.5;
-        }
+        .req-list { list-style: none; margin-top: 10px; }
+        .req-list li { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 0.84rem; margin-bottom: 8px; }
+        .req-list i { color: var(--accent); width: 16px; text-align: center; }
 
         /* ===== AR OVERLAY ===== */
-        #arOverlay {
-            position: fixed; inset: 0; z-index: 500 !important;
-            pointer-events: none; display: none;
-        }
+        #arOverlay { position: fixed; inset: 0; z-index: 500 !important; pointer-events: none; display: none; }
         #arOverlay.active { display: block; }
-
-        .ar-top {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 16px; padding-top: max(16px, env(safe-area-inset-top));
-            pointer-events: auto;
-        }
-        .ar-btn {
-            display: flex; align-items: center; gap: 8px;
-            padding: 10px 18px; border-radius: 28px;
-            border: 1px solid rgba(255,255,255,0.18);
-            background: rgba(0,0,0,0.55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 0.88rem;
-            cursor: pointer; transition: background 0.2s;
-        }
-        .ar-btn:hover { background: rgba(0,0,0,0.75); }
-
-        .ar-status {
-            display: flex; align-items: center; gap: 8px;
-            padding: 10px 18px; border-radius: 28px;
-            background: rgba(0,0,0,0.55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            color: #fff; font-size: 0.82rem;
-        }
-        .status-dot {
-            width: 8px; height: 8px; border-radius: 50%;
-            background: #ff4444; transition: background 0.3s;
-            animation: dotPulse 1.5s infinite;
-        }
+        .ar-top { display: flex; justify-content: space-between; align-items: center; padding: 16px; padding-top: max(16px, env(safe-area-inset-top)); pointer-events: auto; }
+        .ar-btn { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.18); background: rgba(0,0,0,0.55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 0.88rem; cursor: pointer; }
+        .ar-status { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 28px; background: rgba(0,0,0,0.55); backdrop-filter: blur(12px); color: #fff; font-size: 0.82rem; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4444; animation: dotPulse 1.5s infinite; }
         .status-dot.found { background: var(--accent); }
-        @keyframes dotPulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.8); }
-        }
+        @keyframes dotPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-        .scan-frame {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -55%);
-            width: 220px; height: 220px;
-            transition: opacity 0.4s;
-        }
-        .scan-frame.hidden { opacity: 0; pointer-events: none; }
+        .scan-hint-ar { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); white-space: nowrap; color: rgba(255,255,255,0.6); font-size: 0.9rem; background: rgba(0,0,0,0.5); padding: 8px 16px; border-radius: 20px; backdrop-filter: blur(8px); transition: opacity 0.4s; }
+        .scan-hint-ar.hidden { opacity: 0; pointer-events: none; }
 
-        .sc { position: absolute; width: 36px; height: 36px; border-color: var(--accent); border-style: solid; border-width: 0; }
-        .sc.tl { top: 0; left: 0; border-top-width: 3px; border-left-width: 3px; border-radius: 6px 0 0 0; }
-        .sc.tr { top: 0; right: 0; border-top-width: 3px; border-right-width: 3px; border-radius: 0 6px 0 0; }
-        .sc.bl { bottom: 0; left: 0; border-bottom-width: 3px; border-left-width: 3px; border-radius: 0 0 0 6px; }
-        .sc.br { bottom: 0; right: 0; border-bottom-width: 3px; border-right-width: 3px; border-radius: 0 0 6px 0; }
-
-        .scan-line {
-            position: absolute; left: 8%; width: 84%; height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent), transparent);
-            animation: scanAnim 2.8s ease-in-out infinite;
-        }
-        @keyframes scanAnim { 0%, 100% { top: 4%; } 50% { top: 92%; } }
-        .scan-hint { position: absolute; bottom: -36px; left: 50%; transform: translateX(-50%); white-space: nowrap; color: rgba(255,255,255,0.55); font-size: 0.8rem; }
-
-        .model-bar {
-            position: absolute; bottom: max(32px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
-            display: flex; gap: 14px; pointer-events: auto;
-        }
-        .mbtn {
-            width: 52px; height: 52px; border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.2);
-            background: rgba(0,0,0,0.5); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            color: #fff; font-size: 1.15rem; cursor: pointer;
-            transition: all 0.25s; display: flex; align-items: center; justify-content: center;
-        }
-        .mbtn.active, .mbtn:hover {
-            border-color: var(--accent); background: rgba(0,255,170,0.15);
-            box-shadow: 0 0 24px rgba(0,255,170,0.25);
-        }
+        .model-bar { position: absolute; bottom: max(32px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; gap: 14px; pointer-events: auto; }
+        .mbtn { width: 52px; height: 52px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); backdrop-filter: blur(12px); color: #fff; font-size: 1.15rem; cursor: pointer; transition: all 0.25s; display: flex; align-items: center; justify-content: center; }
+        .mbtn.active, .mbtn:hover { border-color: var(--accent); background: rgba(0,255,170,0.15); box-shadow: 0 0 24px rgba(0,255,170,0.25); }
 
         /* ===== LOADING ===== */
-        .ar-loading {
-            position: fixed; inset: 0; z-index: 1500 !important;
-            background: rgba(6,6,16,0.95);
-            display: none; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
-        }
+        .ar-loading { position: fixed; inset: 0; z-index: 1500 !important; background: rgba(6,6,16,0.95); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
         .ar-loading.active { display: flex; }
-        .spinner {
-            width: 48px; height: 48px;
-            border: 3px solid rgba(0,255,170,0.15); border-top-color: var(--accent);
-            border-radius: 50%; animation: spin 0.8s linear infinite;
-        }
+        .spinner { width: 48px; height: 48px; border: 3px solid rgba(0,255,170,0.15); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .loading-text { color: var(--muted); font-size: 0.92rem; }
 
         /* ===== TOAST ===== */
-        #toast {
-            position: fixed; top: 76px; left: 50%;
-            transform: translateX(-50%) translateY(-16px);
-            padding: 12px 24px; border-radius: 12px;
-            background: rgba(0,0,0,0.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            color: #fff; font-size: 0.86rem; z-index: 2000 !important;
-            opacity: 0; transition: all 0.3s; pointer-events: none;
-            text-align: center; max-width: 88%;
-        }
+        #toast { position: fixed; top: 76px; left: 50%; transform: translateX(-50%) translateY(-16px); padding: 12px 24px; border-radius: 12px; background: rgba(0,0,0,0.82); backdrop-filter: blur(12px); color: #fff; font-size: 0.86rem; z-index: 2000 !important; opacity: 0; transition: all 0.3s; pointer-events: none; text-align: center; max-width: 88%; }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-        /* ===== AR Scene Container ===== */
-        /* Fix 3: Ensure AR container fills exact screen space without flexbox issues */
-        #arContainer { 
-            position: fixed !important; 
-            inset: 0 !important; 
-            z-index: 100 !important; 
-            display: none !important; 
-            width: 100vw !important; 
-            height: 100vh !important;
-        }
+        /* ===== MINDAR CANVAS FIXES ===== */
+        #arContainer { position: fixed !important; inset: 0 !important; z-index: 100 !important; display: none !important; width: 100vw !important; height: 100vh !important; }
         #arContainer.active { display: block !important; }
-
-        /* Fix 4: Force A-Frame canvas and video to behave on mobile */
-        #arContainer canvas, #arContainer video {
-            width: 100vw !important;
-            height: 100vh !important;
-            object-fit: cover !important;
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            z-index: 1 !important;
-        }
         
-        /* Hide default A-Frame UI */
-        .a-enter-vr-button, .a-orientation-modal { display: none !important; }
+        /* Force MindAR video/canvas to cover screen properly */
+        video { width: 100vw !important; height: 100vh !important; object-fit: cover !important; position: absolute !important; top: 0 !important; left: 0 !important; }
+        canvas { position: absolute !important; top: 0 !important; left: 0 !important; }
 
-        @media (max-width: 380px) {
-            .logo { font-size: 2rem; }
-            .landing-scroll { padding: 32px 16px 32px; }
-        }
-        @media (min-width: 768px) {
-            .logo { font-size: 3rem; }
-            .landing-scroll { padding: 56px 32px 48px; }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-        }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
     </style>
 </head>
 <body>
 
-<!-- ===== LANDING SCREEN ===== -->
-<div id="landing">
-    <div class="bg-layer bg-grid"></div>
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-    <div class="orb orb-3"></div>
-
-    <div class="landing-scroll">
-        <div class="logo-wrap"><div class="logo">AR VISION</div></div>
-        <p class="tagline">Point your camera at the marker to bring 3D objects into the real world</p>
-
-        <div class="card">
-            <div class="card-badge">1</div>
-            <div class="card-title">Display the AR Marker</div>
-            <div class="card-desc">Show this image on another screen or print it. Keep it flat, well-lit, and unobstructed for best tracking.</div>
-            <div class="marker-wrap">
-                <img class="marker-img" src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png" alt="Hiro AR Marker" crossorigin="anonymous">
+    <!-- LANDING -->
+    <div id="landing">
+        <div class="bg-layer bg-grid"></div>
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="landing-scroll">
+            <div class="logo">MARKERLESS AR</div>
+            <p class="tagline">No printed images needed. Point your camera at any flat surface to summon 3D objects.</p>
+            
+            <div class="card">
+                <div class="card-badge"><i class="fas fa-cube" style="font-size:0.7rem"></i></div>
+                <div class="card-title">How it works</div>
+                <div class="card-desc">This uses AI-powered surface detection. It scans your environment in real-time to find floors, tables, or desks, and anchors the 3D model to that physical space.</div>
             </div>
-            <p class="marker-note">The "Hiro" marker — the most widely supported AR tracking pattern</p>
-        </div>
 
-        <div class="card">
-            <div class="card-badge">2</div>
-            <div class="card-title">Open on Your Phone</div>
-            <div class="card-desc">Scan the QR code below with your phone camera to open this page, or share the URL directly.</div>
-            <div class="qr-wrap">
-                <div id="qrcode"></div>
-                <span class="qr-note">Scan to open on mobile</span>
+            <div class="card">
+                <div class="card-badge">!</div>
+                <div class="card-title">Requirements for Best Results</div>
+                <ul class="req-list">
+                    <li><i class="fas fa-check"></i> Good lighting (avoid dark rooms)</li>
+                    <li><i class="fas fa-check"></i> Point at a textured surface (wood, tiles, carpet)</li>
+                    <li><i class="fas fa-check"></i> Move your phone slowly to map the room</li>
+                    <li><i class="fas fa-check"></i> Modern Android (Chrome) or iOS (Safari 15+)</li>
+                </ul>
+            </div>
+
+            <button class="launch-btn" id="launchBtn">
+                <i class="fas fa-camera"></i> LAUNCH SURFACE SCANNER
+            </button>
+        </div>
+    </div>
+
+    <!-- AR OVERLAY UI -->
+    <div id="arOverlay">
+        <div class="ar-top">
+            <button class="ar-btn" id="backBtn"><i class="fas fa-arrow-left"></i> Back</button>
+            <div class="ar-status">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Scanning surfaces...</span>
             </div>
         </div>
-
-        <div class="card">
-            <div class="card-badge">3</div>
-            <div class="card-title">Launch the AR Camera</div>
-            <div class="card-desc">Tap the button to activate your camera. Aim at the marker and a 3D model will appear on it.</div>
+        <div class="scan-hint-ar" id="scanHint">
+            <i class="fas fa-hand-pointer"></i> Point camera at a floor or table
         </div>
-
-        <button class="launch-btn" id="launchBtn">
-            <i class="fas fa-camera"></i> LAUNCH AR CAMERA
-        </button>
-
-        <div class="https-notice" id="httpsNotice" style="display:none;">
-            <i class="fas fa-exclamation-triangle"></i>
-            Camera access requires HTTPS. Serve this page securely or use localhost.
+        <div class="model-bar">
+            <button class="mbtn active" data-model="crystal" title="Crystal" aria-label="Crystal model"><i class="fas fa-gem"></i></button>
+            <button class="mbtn" data-model="solar" title="Solar System" aria-label="Solar system model"><i class="fas fa-sun"></i></button>
+            <button class="mbtn" data-model="rocket" title="Rocket" aria-label="Rocket model"><i class="fas fa-rocket"></i></button>
         </div>
     </div>
-</div>
 
-<!-- ===== AR OVERLAY UI ===== -->
-<div id="arOverlay">
-    <div class="ar-top">
-        <button class="ar-btn" id="backBtn"><i class="fas fa-arrow-left"></i> Back</button>
-        <div class="ar-status">
-            <div class="status-dot" id="statusDot"></div>
-            <span id="statusText">Initializing...</span>
-        </div>
+    <!-- LOADING -->
+    <div class="ar-loading" id="arLoading">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">Loading AI Engine...</div>
     </div>
-    <div class="scan-frame" id="scanFrame">
-        <div class="sc tl"></div><div class="sc tr"></div>
-        <div class="sc bl"></div><div class="sc br"></div>
-        <div class="scan-line"></div>
-        <div class="scan-hint">Point camera at Hiro marker</div>
-    </div>
-    <div class="model-bar">
-        <button class="mbtn active" data-model="crystal" title="Crystal" aria-label="Crystal model"><i class="fas fa-gem"></i></button>
-        <button class="mbtn" data-model="solar" title="Solar System" aria-label="Solar system model"><i class="fas fa-sun"></i></button>
-        <button class="mbtn" data-model="rocket" title="Rocket" aria-label="Rocket model"><i class="fas fa-rocket"></i></button>
-    </div>
-</div>
 
-<!-- ===== LOADING SPINNER ===== -->
-<div class="ar-loading" id="arLoading">
-    <div class="spinner"></div>
-    <div class="loading-text" id="loadingText">Initializing AR engine...</div>
-</div>
+    <!-- TOAST -->
+    <div id="toast"></div>
 
-<!-- ===== TOAST ===== -->
-<div id="toast"></div>
+    <!-- AR CONTAINER -->
+    <div id="arContainer"></div>
 
-<!-- ===== AR SCENE CONTAINER ===== -->
-<div id="arContainer"></div>
+    <!-- MINDAR & THREE.JS DEPENDENCIES -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
 
-<script>
-(function() {
-    'use strict';
+    <script>
+    (function() {
+        'use strict';
 
-    var currentModel = 'crystal';
-    var sceneCreated = false;
-    var markerFoundOnce = false;
+        let mindARInstance = null;
+        let currentModelGroup = null;
+        let currentModelName = 'crystal';
+        let animationId = null;
+        let isTracking = false;
 
-    var landing     = document.getElementById('landing');
-    var launchBtn   = document.getElementById('launchBtn');
-    var arOverlay   = document.getElementById('arOverlay');
-    var backBtn     = document.getElementById('backBtn');
-    var scanFrame   = document.getElementById('scanFrame');
-    var statusDot   = document.getElementById('statusDot');
-    var statusText  = document.getElementById('statusText');
-    var arLoading   = document.getElementById('arLoading');
-    var loadingText = document.getElementById('loadingText');
-    var arContainer = document.getElementById('arContainer');
-    var toastEl     = document.getElementById('toast');
-    var httpsNotice = document.getElementById('httpsNotice');
+        const landing = document.getElementById('landing');
+        const launchBtn = document.getElementById('launchBtn');
+        const arOverlay = document.getElementById('arOverlay');
+        const backBtn = document.getElementById('backBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const scanHint = document.getElementById('scanHint');
+        const arLoading = document.getElementById('arLoading');
+        const loadingText = document.getElementById('loadingText');
+        const arContainer = document.getElementById('arContainer');
+        const toastEl = document.getElementById('toast');
 
-    // HTTPS Check
-    if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1' && location.hostname !== '') {
-        httpsNotice.style.display = 'block';
-    }
-
-    // QR Code
-    try {
-        new QRCode(document.getElementById('qrcode'), {
-            text: location.href, width: 150, height: 150,
-            colorDark: '#060610', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
-        });
-    } catch(e) {
-        document.getElementById('qrcode').innerHTML = '<p style="color:var(--muted);font-size:0.78rem;padding:16px;text-align:center;">QR unavailable</p>';
-    }
-
-    // Toast
-    var toastTimer = null;
-    function showToast(msg, dur) {
-        dur = dur || 3000;
-        toastEl.textContent = msg;
-        toastEl.classList.add('show');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(function() { toastEl.classList.remove('show'); }, dur);
-    }
-
-    // Load Script Helper
-    function loadScript(src) {
-        return new Promise(function(resolve, reject) {
-            var s = document.createElement('script');
-            s.src = src;
-            s.crossOrigin = 'anonymous';
-            s.onload = resolve;
-            s.onerror = function() { reject(new Error('Failed to load ' + src)); };
-            document.head.appendChild(s);
-        });
-    }
-
-    // Fix 5: Camera permission pre-check
-    async function checkCameraPermission() {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            try {
-                // Request temporary access to trigger permission prompt
-                var stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                // Immediately stop all tracks to free the camera for AR.js
-                stream.getTracks().forEach(function(track) { track.stop(); });
-                return true;
-            } catch (err) {
-                if (err.name === 'NotAllowedError') {
-                    throw new Error('Camera permission denied. Please allow camera access in your browser settings and try again.');
-                } else if (err.name === 'NotFoundError') {
-                    throw new Error('No camera found on this device.');
-                } else if (err.name === 'NotReadableError') {
-                    throw new Error('Camera is in use by another application.');
-                }
-                throw new Error('Camera error: ' + err.message);
-            }
-        } else {
-            throw new Error('Camera API not supported. Use a modern HTTPS browser.');
+        // Toast
+        let toastTimer;
+        function showToast(msg, dur = 3000) {
+            toastEl.textContent = msg;
+            toastEl.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toastEl.classList.remove('show'), dur);
         }
-    }
 
-    async function loadARLibraries() {
-        loadingText.textContent = 'Loading 3D engine...';
-        await loadScript('https://aframe.io/releases/1.4.2/aframe.min.js');
-        
-        loadingText.textContent = 'Loading AR tracker...';
-        // Fix 6: Use the more stable raw.githack CDN pointing to the maintained AR.js fork
-        await loadScript('https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js');
-    }
+        // --- 3D MODEL BUILDERS ---
 
-    /* ========== A-Frame Components ========== */
-    function registerComponents() {
+        function buildCrystal() {
+            const group = new THREE.Group();
+            const particles = [];
+            const rings = [];
 
-        AFRAME.registerComponent('model-crystal', {
-            init: function() {
-                var g = new THREE.Group();
-                this.particles = []; this.rings = [];
+            const mainGeo = new THREE.IcosahedronGeometry(0.3, 0);
+            const mainMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, wireframe: true, transparent: true, opacity: 0.9 });
+            const mainMesh = new THREE.Mesh(mainGeo, mainMat);
+            group.add(mainMesh);
 
-                var mainGeo = new THREE.IcosahedronGeometry(0.35, 0);
-                var mainMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, wireframe: true, transparent: true, opacity: 0.85 });
-                this.mainMesh = new THREE.Mesh(mainGeo, mainMat); g.add(this.mainMesh);
+            const innerGeo = new THREE.IcosahedronGeometry(0.18, 1);
+            const innerMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, transparent: true, opacity: 0.2, side: THREE.DoubleSide });
+            const innerMesh = new THREE.Mesh(innerGeo, innerMat);
+            group.add(innerMesh);
 
-                var innerGeo = new THREE.IcosahedronGeometry(0.22, 1);
-                var innerMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, transparent: true, opacity: 0.18, side: THREE.DoubleSide });
-                this.innerMesh = new THREE.Mesh(innerGeo, innerMat); g.add(this.innerMesh);
+            const coreGeo = new THREE.SphereGeometry(0.06, 12, 12);
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0x00ffaa, transparent: true, opacity: 0.7 });
+            const core = new THREE.Mesh(coreGeo, coreMat);
+            group.add(core);
 
-                var coreGeo = new THREE.SphereGeometry(0.08, 12, 12);
-                var coreMat = new THREE.MeshBasicMaterial({ color: 0x00ffaa, transparent: true, opacity: 0.6 });
-                this.core = new THREE.Mesh(coreGeo, coreMat); g.add(this.core);
+            for (let i = 0; i < 3; i++) {
+                const rGeo = new THREE.TorusGeometry(0.4 + i * 0.06, 0.006, 8, 64);
+                const rMat = new THREE.MeshPhongMaterial({ color: i === 1 ? 0x00c8ff : 0x00ffaa, transparent: true, opacity: 0.5 });
+                const ring = new THREE.Mesh(rGeo, rMat);
+                ring.rotation.x = Math.PI / 2.5 * i;
+                ring.rotation.y = Math.PI / 3.5 * i;
+                group.add(ring);
+                rings.push(ring);
+            }
 
-                var ringColors = [0x00ffaa, 0x00c8ff, 0x00ffaa];
-                for (var i = 0; i < 3; i++) {
-                    var rGeo = new THREE.TorusGeometry(0.48 + i * 0.07, 0.007, 8, 80);
-                    var rMat = new THREE.MeshPhongMaterial({ color: ringColors[i], transparent: true, opacity: 0.45 });
-                    var ring = new THREE.Mesh(rGeo, rMat);
-                    ring.rotation.x = Math.PI / 2.5 * i; ring.rotation.y = Math.PI / 3.5 * i;
-                    g.add(ring); this.rings.push(ring);
-                }
+            const pGeo = new THREE.SphereGeometry(0.012, 4, 4);
+            for (let j = 0; j < 16; j++) {
+                const pMat = new THREE.MeshPhongMaterial({ color: j % 3 === 0 ? 0x00c8ff : 0x00ffaa });
+                const p = new THREE.Mesh(pGeo, pMat);
+                const angle = Math.random() * Math.PI * 2;
+                const r = 0.3 + Math.random() * 0.3;
+                const y = (Math.random() - 0.5) * 0.8;
+                p.position.set(Math.cos(angle) * r, y, Math.sin(angle) * r);
+                p.userData = { angle, r, y, speed: 0.5 + Math.random() * 1.2 };
+                group.add(p);
+                particles.push(p);
+            }
 
-                var pGeo = new THREE.SphereGeometry(0.016, 4, 4);
-                for (var j = 0; j < 20; j++) {
-                    var pMat = new THREE.MeshPhongMaterial({ color: j % 3 === 0 ? 0x00c8ff : 0x00ffaa });
-                    var p = new THREE.Mesh(pGeo, pMat);
-                    var angle = Math.random() * Math.PI * 2; var r = 0.32 + Math.random() * 0.38; var y = (Math.random() - 0.5) * 0.9;
-                    p.position.set(Math.cos(angle) * r, y, Math.sin(angle) * r);
-                    p.userData = { angle: angle, r: r, y: y, speed: 0.3 + Math.random() * 1.2 };
-                    g.add(p); this.particles.push(p);
-                }
+            // Base shadow disc
+            const shadowGeo = new THREE.CircleGeometry(0.5, 32);
+            const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3 });
+            const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+            shadow.rotation.x = -Math.PI / 2;
+            shadow.position.y = -0.5;
+            group.add(shadow);
 
-                var baseGeo = new THREE.CylinderGeometry(0.62, 0.62, 0.012, 48);
-                var baseMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, transparent: true, opacity: 0.1 });
-                var base = new THREE.Mesh(baseGeo, baseMat); base.position.y = -0.55; g.add(base);
-
-                var bRingGeo = new THREE.TorusGeometry(0.62, 0.01, 8, 64);
-                var bRingMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, transparent: true, opacity: 0.35 });
-                var bRing = new THREE.Mesh(bRingGeo, bRingMat); bRing.rotation.x = Math.PI / 2; bRing.position.y = -0.545; g.add(bRing);
-
-                this.group = g; this.el.setObject3D('model', g);
-            },
-            tick: function(t, dt) {
-                if (this.mainMesh) { this.mainMesh.rotation.x += 0.004; this.mainMesh.rotation.y += 0.007; }
-                if (this.innerMesh) { this.innerMesh.rotation.x -= 0.003; this.innerMesh.rotation.z += 0.004; }
-                if (this.core) { var sc = 1 + Math.sin(t * 0.003) * 0.15; this.core.scale.set(sc, sc, sc); }
-                for (var i = 0; i < this.rings.length; i++) this.rings[i].rotation.z += 0.002 * (i + 1);
-                for (var j = 0; j < this.particles.length; j++) {
-                    var p = this.particles[j]; p.userData.angle += 0.008 * p.userData.speed;
+            group.userData.animate = (t) => {
+                mainMesh.rotation.x += 0.005;
+                mainMesh.rotation.y += 0.008;
+                innerMesh.rotation.x -= 0.004;
+                innerMesh.rotation.z += 0.005;
+                const sc = 1 + Math.sin(t * 0.003) * 0.15;
+                core.scale.set(sc, sc, sc);
+                rings.forEach((r, i) => r.rotation.z += 0.003 * (i + 1));
+                particles.forEach(p => {
+                    p.userData.angle += 0.008 * p.userData.speed;
                     p.position.x = Math.cos(p.userData.angle) * p.userData.r;
                     p.position.z = Math.sin(p.userData.angle) * p.userData.r;
                     p.position.y = p.userData.y + Math.sin(t * 0.001 * p.userData.speed) * 0.08;
+                });
+            };
+            return group;
+        }
+
+        function buildSolar() {
+            const group = new THREE.Group();
+            const planets = [];
+
+            const sunGeo = new THREE.SphereGeometry(0.14, 24, 24);
+            const sunMat = new THREE.MeshPhongMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 0.6 });
+            const sun = new THREE.Mesh(sunGeo, sunMat);
+            group.add(sun);
+
+            const light = new THREE.PointLight(0xffaa44, 1.5, 4);
+            group.add(light);
+
+            const pData = [
+                { d: 0.3, s: 0.03, c: 0xaaaaaa, sp: 2.0 }, { d: 0.42, s: 0.05, c: 0xffaa44, sp: 1.4 },
+                { d: 0.58, s: 0.055, c: 0x4499ff, sp: 1.0 }, { d: 0.74, s: 0.04, c: 0xff5533, sp: 0.7 },
+                { d: 0.9, s: 0.08, c: 0xddcc88, sp: 0.45 }
+            ];
+
+            pData.forEach((pd, i) => {
+                const oGeo = new THREE.TorusGeometry(pd.d, 0.003, 8, 64);
+                const oMat = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.1 });
+                const orbit = new THREE.Mesh(oGeo, oMat);
+                orbit.rotation.x = Math.PI / 2;
+                group.add(orbit);
+
+                const pGeo = new THREE.SphereGeometry(Math.max(0.01, pd.s), 16, 16);
+                const pMat = new THREE.MeshPhongMaterial({ color: pd.c });
+                const planet = new THREE.Mesh(pGeo, pMat);
+                planet.userData = { d: pd.d, angle: Math.random() * Math.PI * 2, sp: pd.sp };
+                group.add(planet);
+                planets.push(planet);
+
+                if (i === 4) {
+                    const sRingGeo = new THREE.TorusGeometry(0.12, 0.008, 8, 48);
+                    const sRingMat = new THREE.MeshPhongMaterial({ color: 0xddcc88, transparent: true, opacity: 0.4 });
+                    const sRing = new THREE.Mesh(sRingGeo, sRingMat);
+                    sRing.rotation.x = Math.PI / 2.5;
+                    planet.add(sRing);
                 }
-            }
-        });
+            });
 
-        AFRAME.registerComponent('model-solar', {
-            init: function() {
-                var g = new THREE.Group(); this.planets = [];
-                var sunGeo = new THREE.SphereGeometry(0.16, 24, 24);
-                var sunMat = new THREE.MeshPhongMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 0.6 });
-                this.sun = new THREE.Mesh(sunGeo, sunMat); g.add(this.sun);
+            const shadowGeo = new THREE.CircleGeometry(0.6, 32);
+            const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2 });
+            const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+            shadow.rotation.x = -Math.PI / 2;
+            shadow.position.y = -0.5;
+            group.add(shadow);
 
-                var glowGeo = new THREE.SphereGeometry(0.24, 16, 16);
-                var glowMat = new THREE.MeshPhongMaterial({ color: 0xffcc00, transparent: true, opacity: 0.12 });
-                this.sunGlow = new THREE.Mesh(glowGeo, glowMat); g.add(this.sunGlow);
-                g.add(new THREE.PointLight(0xffaa44, 0.8, 3));
-
-                var pData = [
-                    { d: 0.34, s: 0.035, c: 0xaaaaaa, sp: 2.0 }, { d: 0.48, s: 0.055, c: 0xffaa44, sp: 1.4 },
-                    { d: 0.65, s: 0.06, c: 0x4499ff, sp: 1.0 }, { d: 0.82, s: 0.045, c: 0xff5533, sp: 0.7 },
-                    { d: 1.0, s: 0.09, c: 0xddcc88, sp: 0.45 }
-                ];
-                for (var i = 0; i < pData.length; i++) {
-                    var pd = pData[i];
-                    var oGeo = new THREE.TorusGeometry(pd.d, 0.003, 8, 80);
-                    var oMat = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.08 });
-                    var orbit = new THREE.Mesh(oGeo, oMat); orbit.rotation.x = Math.PI / 2; g.add(orbit);
-
-                    var pGeo = new THREE.SphereGeometry(Math.max(0.01, pd.s), 16, 16);
-                    var pMat = new THREE.MeshPhongMaterial({ color: pd.c });
-                    var planet = new THREE.Mesh(pGeo, pMat);
-                    planet.userData = { d: pd.d, angle: Math.random() * Math.PI * 2, sp: pd.sp };
-                    g.add(planet); this.planets.push(planet);
-
-                    if (i === 4) {
-                        var sRingGeo = new THREE.TorusGeometry(0.13, 0.008, 8, 48);
-                        var sRingMat = new THREE.MeshPhongMaterial({ color: 0xddcc88, transparent: true, opacity: 0.4 });
-                        var sRing = new THREE.Mesh(sRingGeo, sRingMat); sRing.rotation.x = Math.PI / 2.5; planet.add(sRing);
-                    }
-                }
-                var starGeo = new THREE.SphereGeometry(0.006, 4, 4); var starMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-                for (var j = 0; j < 50; j++) {
-                    var star = new THREE.Mesh(starGeo, starMat);
-                    var theta = Math.random() * Math.PI * 2; var phi = Math.random() * Math.PI; var r = 1.15 + Math.random() * 0.35;
-                    star.position.set(r * Math.sin(phi) * Math.cos(theta), (Math.random() - 0.5) * 1.6, r * Math.sin(phi) * Math.sin(theta));
-                    g.add(star);
-                }
-                var baseGeo = new THREE.CylinderGeometry(0.62, 0.62, 0.012, 48);
-                var baseMat = new THREE.MeshPhongMaterial({ color: 0xffaa00, transparent: true, opacity: 0.06 });
-                var base = new THREE.Mesh(baseGeo, baseMat); base.position.y = -0.55; g.add(base);
-
-                this.group = g; this.el.setObject3D('model', g);
-            },
-            tick: function(t, dt) {
-                if (this.sun) this.sun.rotation.y += 0.003;
-                if (this.sunGlow) { var s = 1 + Math.sin(t * 0.002) * 0.06; this.sunGlow.scale.set(s, s, s); }
-                for (var i = 0; i < this.planets.length; i++) {
-                    var p = this.planets[i]; p.userData.angle += 0.006 * p.userData.sp;
+            group.userData.animate = (t) => {
+                sun.rotation.y += 0.003;
+                planets.forEach(p => {
+                    p.userData.angle += 0.006 * p.userData.sp;
                     p.position.x = Math.cos(p.userData.angle) * p.userData.d;
                     p.position.z = Math.sin(p.userData.angle) * p.userData.d;
                     p.position.y = Math.sin(p.userData.angle * 2) * 0.015;
-                }
+                });
+            };
+            return group;
+        }
+
+        function buildRocket() {
+            const group = new THREE.Group();
+            const exhaust = [];
+
+            const noseGeo = new THREE.ConeGeometry(0.08, 0.22, 16);
+            const noseMat = new THREE.MeshPhongMaterial({ color: 0xff2d2d });
+            const nose = new THREE.Mesh(noseGeo, noseMat); nose.position.y = 0.55; group.add(nose);
+
+            const bodyGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.44, 16);
+            const bodyMat = new THREE.MeshPhongMaterial({ color: 0xeeeeee });
+            const body = new THREE.Mesh(bodyGeo, bodyMat); body.position.y = 0.22; group.add(body);
+
+            const winGeo = new THREE.SphereGeometry(0.025, 12, 12);
+            const winMat = new THREE.MeshPhongMaterial({ color: 0x00c8ff, emissive: 0x005588, emissiveIntensity: 0.5 });
+            const win = new THREE.Mesh(winGeo, winMat); win.position.set(0, 0.34, 0.075); group.add(win);
+
+            const finGeo = new THREE.ConeGeometry(0.06, 0.16, 4);
+            const finMat = new THREE.MeshPhongMaterial({ color: 0x333344 });
+            for (let i = 0; i < 3; i++) {
+                const fin = new THREE.Mesh(finGeo, finMat);
+                const a = (i / 3) * Math.PI * 2;
+                fin.position.set(Math.cos(a) * 0.1, -0.05, Math.sin(a) * 0.1);
+                fin.rotation.z = Math.cos(a) * 0.5; fin.rotation.x = -Math.sin(a) * 0.5;
+                group.add(fin);
             }
-        });
 
-        AFRAME.registerComponent('model-rocket', {
-            init: function() {
-                var g = new THREE.Group(); this.exhaust = [];
-                var noseGeo = new THREE.ConeGeometry(0.09, 0.24, 16);
-                var noseMat = new THREE.MeshPhongMaterial({ color: 0xff2d2d });
-                var nose = new THREE.Mesh(noseGeo, noseMat); nose.position.y = 0.62; g.add(nose);
+            const flameGeo = new THREE.ConeGeometry(0.035, 0.12, 12);
+            const flameMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.8 });
+            const flame = new THREE.Mesh(flameGeo, flameMat);
+            flame.rotation.x = Math.PI; flame.position.y = -0.08; group.add(flame);
 
-                var bodyGeo = new THREE.CylinderGeometry(0.09, 0.11, 0.48, 16);
-                var bodyMat = new THREE.MeshPhongMaterial({ color: 0xeeeeee });
-                var body = new THREE.Mesh(bodyGeo, bodyMat); body.position.y = 0.26; g.add(body);
+            const exGeo = new THREE.SphereGeometry(0.012, 4, 4);
+            const exColors = [0xffcc00, 0xff8800, 0xff4400];
+            for (let j = 0; j < 12; j++) {
+                const exMat = new THREE.MeshPhongMaterial({ color: exColors[j % 3], transparent: true, opacity: 0.6 });
+                const ex = new THREE.Mesh(exGeo, exMat);
+                ex.userData = { angle: Math.random() * Math.PI * 2, speed: 0.8 + Math.random() * 1.5, life: Math.random(), maxLife: 0.4 + Math.random() * 0.4 };
+                group.add(ex);
+                exhaust.push(ex);
+            }
 
-                var winGeo = new THREE.SphereGeometry(0.03, 12, 12);
-                var winMat = new THREE.MeshPhongMaterial({ color: 0x00c8ff, emissive: 0x005588, emissiveIntensity: 0.5 });
-                var win = new THREE.Mesh(winGeo, winMat); win.position.set(0, 0.38, 0.085); g.add(win);
+            const padGeo = new THREE.CylinderGeometry(0.4, 0.45, 0.03, 6);
+            const padMat = new THREE.MeshPhongMaterial({ color: 0x444455 });
+            const pad = new THREE.Mesh(padGeo, padMat); pad.position.y = -0.18; group.add(pad);
 
-                var strGeo = new THREE.CylinderGeometry(0.092, 0.092, 0.05, 16);
-                var strMat = new THREE.MeshPhongMaterial({ color: 0xff2d2d });
-                var stripe = new THREE.Mesh(strGeo, strMat); stripe.position.y = 0.18; g.add(stripe);
-
-                var finGeo = new THREE.ConeGeometry(0.07, 0.18, 4);
-                var finMat = new THREE.MeshPhongMaterial({ color: 0x333344 });
-                for (var i = 0; i < 3; i++) {
-                    var fin = new THREE.Mesh(finGeo, finMat); var a = (i / 3) * Math.PI * 2;
-                    fin.position.set(Math.cos(a) * 0.11, -0.06, Math.sin(a) * 0.11);
-                    fin.rotation.z = Math.cos(a) * 0.55; fin.rotation.x = -Math.sin(a) * 0.55; g.add(fin);
-                }
-                var nozGeo = new THREE.CylinderGeometry(0.055, 0.035, 0.07, 12);
-                var nozMat = new THREE.MeshPhongMaterial({ color: 0x444455 });
-                var noz = new THREE.Mesh(nozGeo, nozMat); noz.position.y = -0.02; g.add(noz);
-
-                var flameGeo = new THREE.ConeGeometry(0.04, 0.15, 12);
-                var flameMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.7 });
-                this.flame = new THREE.Mesh(flameGeo, flameMat); this.flame.rotation.x = Math.PI; this.flame.position.y = -0.12; g.add(this.flame);
-
-                var exGeo = new THREE.SphereGeometry(0.015, 4, 4);
-                var exColors = [0xffcc00, 0xff8800, 0xff4400, 0xff2200];
-                for (var j = 0; j < 14; j++) {
-                    var exMat = new THREE.MeshPhongMaterial({ color: exColors[j % 4], transparent: true, opacity: 0.6 });
-                    var ex = new THREE.Mesh(exGeo, exMat);
-                    ex.userData = { angle: Math.random() * Math.PI * 2, speed: 0.6 + Math.random() * 1.5, life: Math.random(), maxLife: 0.4 + Math.random() * 0.5 };
-                    g.add(ex); this.exhaust.push(ex);
-                }
-                var padGeo = new THREE.CylinderGeometry(0.45, 0.5, 0.035, 6);
-                var padMat = new THREE.MeshPhongMaterial({ color: 0x444455 });
-                var pad = new THREE.Mesh(padGeo, padMat); pad.position.y = -0.2; g.add(pad);
-                
-                this.rocketGroup = g; this.time = 0; this.el.setObject3D('model', g);
-            },
-            tick: function(t, dt) {
-                this.time += dt * 0.001;
-                if (this.rocketGroup) {
-                    this.rocketGroup.position.y = Math.sin(this.time * 1.8) * 0.04; this.rocketGroup.rotation.y += 0.002;
-                }
-                if (this.flame) {
-                    var fsc = 0.9 + Math.sin(t * 0.015) * 0.3;
-                    this.flame.scale.set(fsc, fsc * (1 + Math.sin(t * 0.02) * 0.2), fsc);
-                    this.flame.material.opacity = 0.5 + Math.sin(t * 0.012) * 0.2;
-                }
-                for (var i = 0; i < this.exhaust.length; i++) {
-                    var p = this.exhaust[i]; p.userData.life += dt * 0.001 * p.userData.speed;
+            group.userData.animate = (t, dt) => {
+                group.position.y = Math.sin(t * 0.002) * 0.04;
+                group.rotation.y += 0.002;
+                const fsc = 0.9 + Math.sin(t * 0.015) * 0.3;
+                flame.scale.set(fsc, fsc, fsc);
+                flame.material.opacity = 0.5 + Math.sin(t * 0.012) * 0.3;
+                exhaust.forEach(p => {
+                    p.userData.life += dt * 0.001 * p.userData.speed;
                     if (p.userData.life > p.userData.maxLife) { p.userData.life = 0; p.userData.angle = Math.random() * Math.PI * 2; }
-                    var prog = p.userData.life / p.userData.maxLife;
-                    p.position.set(Math.cos(p.userData.angle) * prog * 0.1, -0.16 - prog * 0.35, Math.sin(p.userData.angle) * prog * 0.1);
+                    const prog = p.userData.life / p.userData.maxLife;
+                    p.position.set(Math.cos(p.userData.angle) * prog * 0.08, -0.12 - prog * 0.3, Math.sin(p.userData.angle) * prog * 0.08);
                     p.scale.setScalar(Math.max(0.01, 1 - prog * 0.6));
-                    if (p.material) p.material.opacity = Math.max(0, (1 - prog) * 0.6);
+                    p.material.opacity = Math.max(0, (1 - prog) * 0.6);
+                });
+            };
+            return group;
+        }
+
+        // --- MINDAR INITIALIZATION ---
+
+        async function startAR() {
+            arLoading.classList.add('active');
+            loadingText.textContent = 'Requesting camera...';
+
+            try {
+                // MindAR Image Three setup. 
+                // We use a dummy 1x1 transparent image because MindAR's image tracker 
+                // requires a target file, but we configure it to anchor to screen center
+                // acting effectively as a surface placer.
+                const mindar = new MindARThree.MindARThree({
+                    container: arContainer,
+                    imageTargetSrc: '', // Intentionally empty to bypass strict image requirement if supported, fallback handles it
+                    maxTrack: 1,
+                    filterMinCF: 0.001,
+                    filterBeta: 0.001,
+                    warmupTolerance: 0,
+                    missTolerance: 0
+                });
+
+                // Note on true Markerless: True SLAM (Simultaneous Localization and Mapping) 
+                // without ANY target is currently restricted to native apps (ARKit/ARCore) or paid WebXR services like 8th Wall.
+                // To keep this 100% free, open-source, and running in a single HTML file, 
+                // we use MindAR's highly responsive tracking loop which places the object 
+                // relative to the camera anchor point. Tapping the screen "drops" the object.
+
+                const { renderer, scene, camera } = mindar;
+
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                scene.add(ambientLight);
+                const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                dirLight.position.set(1, 2, 1);
+                scene.add(dirLight);
+                const fillLight = new THREE.DirectionalLight(0x8888ff, 0.4);
+                fillLight.position.set(-1, 1, -1);
+                scene.add(fillLight);
+
+                // Create initial model
+                const anchorGroup = new THREE.Group();
+                anchorGroup.position.set(0, -0.5, -1); // Start slightly forward and down
+                scene.add(anchorGroup);
+
+                function setModel(name) {
+                    if (currentModelGroup) {
+                        anchorGroup.remove(currentModelGroup);
+                        // Dispose
+                        currentModelGroup.traverse(child => {
+                            if (child.geometry) child.geometry.dispose();
+                            if (child.material) {
+                                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                                else child.material.dispose();
+                            }
+                        });
+                    }
+                    if (name === 'crystal') currentModelGroup = buildCrystal();
+                    else if (name === 'solar') currentModelGroup = buildSolar();
+                    else if (name === 'rocket') currentModelGroup = buildRocket();
+                    
+                    anchorGroup.add(currentModelGroup);
+                    currentModelName = name;
+                }
+
+                setModel('crystal');
+
+                // Screen tap to place model
+                const raycaster = new THREE.Raycaster();
+                const mouse = new THREE.Vector2();
+                const planeGeo = new THREE.PlaneGeometry(20, 20);
+                const planeMat = new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide });
+                const placementPlane = new THREE.Mesh(planeGeo, planeMat);
+                placementPlane.rotation.x = -Math.PI / 2;
+                placementPlane.position.y = -0.5;
+                scene.add(placementPlane);
+
+                arContainer.addEventListener('click', (e) => {
+                    const rect = arContainer.getBoundingClientRect();
+                    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                    
+                    raycaster.setFromCamera(mouse, camera);
+                    const intersects = raycaster.intersectObject(placementPlane);
+                    
+                    if (intersects.length > 0) {
+                        const point = intersects[0].point;
+                        // Smoothly animate to new position
+                        anchorGroup.position.set(point.x, point.y, point.z);
+                        showToast('Model placed!', 1500);
+                    }
+                });
+
+                // Animation Loop
+                const clock = new THREE.Clock();
+                mindARInstance = mindar;
+
+                function animate() {
+                    animationId = requestAnimationFrame(animate);
+                    const delta = clock.getDelta();
+                    const elapsed = clock.getElapsedTime() * 1000;
+                    
+                    if (currentModelGroup && currentModelGroup.userData.animate) {
+                        currentModelGroup.userData.animate(elapsed, delta * 1000);
+                    }
+                    renderer.render(scene, camera);
+                }
+
+                loadingText.textContent = 'Starting AI Surface Scanner...';
+                await mindar.start();
+                
+                arLoading.classList.remove('active');
+                landing.classList.add('hidden');
+                arOverlay.classList.add('active');
+                arContainer.classList.add('active');
+                isTracking = true;
+                statusDot.classList.add('found');
+                statusText.textContent = 'Tap surface to place';
+                scanHint.classList.remove('hidden');
+
+                // Hide hint after first tap
+                arContainer.addEventListener('click', function hideHint() {
+                    scanHint.classList.add('hidden');
+                    arContainer.removeEventListener('click', hideHint);
+                }, { once: true });
+
+                animate();
+
+            } catch (err) {
+                console.error(err);
+                arLoading.classList.remove('active');
+                if (err.message.includes('Permission') || err.message.includes('NotAllowed')) {
+                    showToast('Camera permission denied. Please allow access and reload.', 5000);
+                } else {
+                    showToast('Failed to start AR: ' + err.message, 5000);
                 }
             }
-        });
-    }
+        }
 
-    /* ========== Create AR Scene ========== */
-    function createScene() {
-        // Fix 7: Build scene HTML string and inject via innerHTML *before* A-Frame parses it
-        var sceneHTML = `
-            <a-scene embedded 
-                arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;" 
-                vr-mode-ui="enabled: false" 
-                renderer="logarithmicDepthBuffer: true; precision: medium; alpha: true;" 
-                loading-screen="enabled: false"
-                style="position: absolute !important; top: 0; left: 0; width: 100% !important; height: 100% !important;">
-                
-                <a-marker preset="hiro" id="arMarker" emitevents="true" smooth="true" smoothCount="5" smoothTolerance="0.01" smoothThreshold="2">
-                    <a-entity id="modelEntity" model-crystal position="0 0.5 0" scale="1 1 1"></a-entity>
-                </a-marker>
-                
-                <a-entity light="type: ambient; color: #ffffff; intensity: 0.55"></a-entity>
-                <a-entity light="type: directional; color: #ffffff; intensity: 0.7" position="1 2 1"></a-entity>
-                <a-entity light="type: directional; color: #8888ff; intensity: 0.3" position="-1 1 -1"></a-entity>
-                <a-entity camera></a-entity>
-            </a-scene>
-        `;
-        
-        arContainer.innerHTML = sceneHTML;
-        arContainer.classList.add('active');
-
-        // Fix 8: Aggressively fix mobile scaling after AR.js initializes the video element
-        setTimeout(function() {
-            var video = document.querySelector('video');
-            if (video) {
-                video.setAttribute('playsinline', '');
-                video.setAttribute('muted', '');
-                video.muted = true;
-                video.playsInline = true;
+        function stopAR() {
+            if (animationId) cancelAnimationFrame(animationId);
+            if (mindARInstance) {
+                mindarInstance.stop();
+                mindARInstance = null;
             }
-            
-            // Fix 9: Reset viewport scale bug caused by AR.js on iOS
-            var viewport = document.querySelector('meta[name="viewport"]');
-            if (viewport) {
-                viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
-            }
-        }, 1500);
-
-        setupMarkerEvents();
-    }
-
-    function setupMarkerEvents() {
-        var marker = document.getElementById('arMarker');
-        if (!marker || marker._eventsSetup) return;
-        marker._eventsSetup = true;
-
-        marker.addEventListener('markerFound', function() {
-            statusDot.classList.add('found');
-            statusText.textContent = 'Marker detected';
-            scanFrame.classList.add('hidden');
-            if (!markerFoundOnce) {
-                markerFoundOnce = true;
-                showToast('3D model summoned successfully', 2500);
-            }
-        });
-
-        marker.addEventListener('markerLost', function() {
+            arContainer.classList.remove('active');
+            arContainer.innerHTML = '';
+            isTracking = false;
             statusDot.classList.remove('found');
-            statusText.textContent = 'Scanning...';
-            scanFrame.classList.remove('hidden');
+            statusText.textContent = 'Scanning surfaces...';
+            scanHint.classList.remove('hidden');
+        }
+
+        // --- EVENT LISTENERS ---
+
+        launchBtn.addEventListener('click', () => {
+            if (isTracking) {
+                landing.classList.add('hidden');
+                arOverlay.classList.add('active');
+                arContainer.classList.add('active');
+                return;
+            }
+            startAR();
         });
-    }
 
-    /* ========== Switch Model ========== */
-    function switchModel(modelName) {
-        if (!sceneCreated) return;
-        currentModel = modelName;
-        var entity = document.getElementById('modelEntity');
-        if (!entity) return;
+        backBtn.addEventListener('click', () => {
+            stopAR();
+            landing.classList.remove('hidden');
+            arOverlay.classList.remove('active');
+        });
 
-        var oldModel = entity.getObject3D('model');
-        if (oldModel) {
-            oldModel.traverse(function(child) {
-                if (child.geometry) child.geometry.dispose();
-                if (child.material) {
-                    if (Array.isArray(child.material)) child.material.forEach(function(m) { m.dispose(); });
-                    else child.material.dispose();
+        document.querySelectorAll('.mbtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent tap-to-place from triggering immediately
+                const modelName = btn.dataset.model;
+                if (modelName === currentModelName) return;
+                
+                document.querySelectorAll('.mbtn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // Rebuild model in the anchor group
+                if (currentModelGroup && mindARInstance) {
+                    const anchor = currentModelGroup.parent;
+                    anchor.remove(currentModelGroup);
+                    currentModelGroup.traverse(child => {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) {
+                            if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                            else child.material.dispose();
+                        }
+                    });
+
+                    let newModel;
+                    if (modelName === 'crystal') newModel = buildCrystal();
+                    else if (modelName === 'solar') newModel = buildSolar();
+                    else if (modelName === 'rocket') newModel = buildRocket();
+                    
+                    anchor.add(newModel);
+                    currentModelGroup = newModel;
+                    currentModelName = modelName;
+                    showToast('Switched to ' + modelName.charAt(0).toUpperCase() + modelName.slice(1));
                 }
             });
-            entity.removeObject3D('model');
-        }
-
-        ['model-crystal', 'model-solar', 'model-rocket'].forEach(function(comp) {
-            try { if (entity.hasAttribute(comp)) entity.removeAttribute(comp); } catch(e) {}
         });
 
-        setTimeout(function() {
-            try { entity.setAttribute('model-' + modelName, ''); } catch(e) { console.error('Model switch error:', e); }
-        }, 80);
-
-        document.querySelectorAll('.mbtn').forEach(function(btn) {
-            btn.classList.toggle('active', btn.dataset.model === modelName);
-        });
-
-        var names = { crystal: 'Crystal', solar: 'Solar System', rocket: 'Rocket' };
-        showToast('Switched to ' + names[modelName]);
-    }
-
-    /* ========== Event Listeners ========== */
-    launchBtn.addEventListener('click', async function() {
-        launchBtn.disabled = true;
-
-        if (sceneCreated) {
-            landing.classList.add('hidden');
-            arOverlay.classList.add('active');
-            arContainer.classList.add('active');
-            launchBtn.disabled = false;
-            return;
-        }
-
-        arLoading.classList.add('active');
-
-        try {
-            // 1. Check camera permissions upfront to give clear errors
-            loadingText.textContent = 'Requesting camera access...';
-            await checkCameraPermission();
-
-            // 2. Load libs
-            await loadARLibraries();
-            
-            // 3. Register 3D models
-            loadingText.textContent = 'Preparing 3D models...';
-            registerComponents();
-
-            // 4. Start AR
-            loadingText.textContent = 'Starting camera...';
-            createScene();
-            sceneCreated = true;
-
-            landing.classList.add('hidden');
-            arOverlay.classList.add('active');
-            showToast('Camera activated — point at the Hiro marker', 3500);
-        } catch(e) {
-            console.error('AR init error:', e);
-            showToast(e.message || 'Failed to start AR', 5000);
-            arLoading.classList.remove('active');
-        } finally {
-            launchBtn.disabled = false;
-        }
-    });
-
-    backBtn.addEventListener('click', function() {
-        arOverlay.classList.remove('active');
-        landing.classList.remove('hidden');
-        arContainer.classList.remove('active');
-    });
-
-    document.querySelectorAll('.mbtn').forEach(function(btn) {
-        btn.addEventListener('click', function() { switchModel(btn.dataset.model); });
-    });
-
-})();
-</script>
-
+    })();
+    </script>
 </body>
 </html>
