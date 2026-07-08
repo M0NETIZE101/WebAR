@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Fix 1: Critical mobile viewport meta to prevent AR.js zoom bugs -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AR Vision — Scan & Summon</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -21,7 +22,14 @@
             --border: rgba(0, 255, 170, 0.12);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Space Grotesk', sans-serif; background: var(--bg); color: var(--fg); }
+        
+        /* Fix 2: Force height and prevent scroll bounce on iOS */
+        html, body { 
+            width: 100%; height: 100%; overflow: hidden; 
+            font-family: 'Space Grotesk', sans-serif; 
+            background: var(--bg); color: var(--fg);
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        }
 
         /* ===== LANDING ===== */
         #landing {
@@ -42,7 +50,7 @@
         }
         @keyframes gridScroll { to { transform: translate(48px, 48px); } }
 
-        .orb { position: fixed; border-radius: 50%; filter: blur(100px); opacity: 0.22; will-change: transform; }
+        .orb { position: fixed; border-radius: 50%; filter: blur(100px); opacity: 0.22; }
         .orb-1 { width: 340px; height: 340px; background: var(--accent); top: -5%; left: -8%; animation: orbDrift 10s ease-in-out infinite; }
         .orb-2 { width: 280px; height: 280px; background: var(--accent2); bottom: -5%; right: -8%; animation: orbDrift 12s ease-in-out infinite reverse; }
         .orb-3 { width: 200px; height: 200px; background: var(--accent3); top: 45%; left: 55%; animation: orbDrift 8s ease-in-out infinite 2s; }
@@ -124,7 +132,8 @@
 
         .ar-top {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 16px; pointer-events: auto;
+            padding: 16px; padding-top: max(16px, env(safe-area-inset-top));
+            pointer-events: auto;
         }
         .ar-btn {
             display: flex; align-items: center; gap: 8px;
@@ -173,14 +182,10 @@
             animation: scanAnim 2.8s ease-in-out infinite;
         }
         @keyframes scanAnim { 0%, 100% { top: 4%; } 50% { top: 92%; } }
-
-        .scan-hint {
-            position: absolute; bottom: -36px; left: 50%; transform: translateX(-50%);
-            white-space: nowrap; color: rgba(255,255,255,0.55); font-size: 0.8rem;
-        }
+        .scan-hint { position: absolute; bottom: -36px; left: 50%; transform: translateX(-50%); white-space: nowrap; color: rgba(255,255,255,0.55); font-size: 0.8rem; }
 
         .model-bar {
-            position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
+            position: absolute; bottom: max(32px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
             display: flex; gap: 14px; pointer-events: auto;
         }
         .mbtn {
@@ -223,8 +228,28 @@
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
         /* ===== AR Scene Container ===== */
-        #arContainer { position: fixed; inset: 0; z-index: 100 !important; display: none; }
+        /* Fix 3: Ensure AR container fills exact screen space without flexbox issues */
+        #arContainer { 
+            position: fixed !important; 
+            inset: 0 !important; 
+            z-index: 100 !important; 
+            display: none !important; 
+            width: 100vw !important; 
+            height: 100vh !important;
+        }
+        #arContainer.active { display: block !important; }
 
+        /* Fix 4: Force A-Frame canvas and video to behave on mobile */
+        #arContainer canvas, #arContainer video {
+            width: 100vw !important;
+            height: 100vh !important;
+            object-fit: cover !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            z-index: 1 !important;
+        }
+        
         /* Hide default A-Frame UI */
         .a-enter-vr-button, .a-orientation-modal { display: none !important; }
 
@@ -237,7 +262,6 @@
             .landing-scroll { padding: 56px 32px 48px; }
         }
 
-        /* Reduce motion for accessibility */
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
         }
@@ -256,7 +280,6 @@
         <div class="logo-wrap"><div class="logo">AR VISION</div></div>
         <p class="tagline">Point your camera at the marker to bring 3D objects into the real world</p>
 
-        <!-- Step 1 -->
         <div class="card">
             <div class="card-badge">1</div>
             <div class="card-title">Display the AR Marker</div>
@@ -267,7 +290,6 @@
             <p class="marker-note">The "Hiro" marker — the most widely supported AR tracking pattern</p>
         </div>
 
-        <!-- Step 2 -->
         <div class="card">
             <div class="card-badge">2</div>
             <div class="card-title">Open on Your Phone</div>
@@ -278,11 +300,10 @@
             </div>
         </div>
 
-        <!-- Step 3 -->
         <div class="card">
             <div class="card-badge">3</div>
             <div class="card-title">Launch the AR Camera</div>
-            <div class="card-desc">Tap the button to activate your camera. Aim at the marker and a 3D model will appear on it. Use the bottom buttons to switch between models.</div>
+            <div class="card-desc">Tap the button to activate your camera. Aim at the marker and a 3D model will appear on it.</div>
         </div>
 
         <button class="launch-btn" id="launchBtn">
@@ -291,7 +312,7 @@
 
         <div class="https-notice" id="httpsNotice" style="display:none;">
             <i class="fas fa-exclamation-triangle"></i>
-            Camera access requires HTTPS. Serve this page over HTTPS or use localhost for testing.
+            Camera access requires HTTPS. Serve this page securely or use localhost.
         </div>
     </div>
 </div>
@@ -302,7 +323,7 @@
         <button class="ar-btn" id="backBtn"><i class="fas fa-arrow-left"></i> Back</button>
         <div class="ar-status">
             <div class="status-dot" id="statusDot"></div>
-            <span id="statusText">Scanning...</span>
+            <span id="statusText">Initializing...</span>
         </div>
     </div>
     <div class="scan-frame" id="scanFrame">
@@ -321,25 +342,23 @@
 <!-- ===== LOADING SPINNER ===== -->
 <div class="ar-loading" id="arLoading">
     <div class="spinner"></div>
-    <div class="loading-text">Initializing AR engine...</div>
+    <div class="loading-text" id="loadingText">Initializing AR engine...</div>
 </div>
 
 <!-- ===== TOAST ===== -->
 <div id="toast"></div>
 
-<!-- ===== AR SCENE (injected dynamically) ===== -->
+<!-- ===== AR SCENE CONTAINER ===== -->
 <div id="arContainer"></div>
 
 <script>
 (function() {
     'use strict';
 
-    /* ---------- State ---------- */
     var currentModel = 'crystal';
     var sceneCreated = false;
     var markerFoundOnce = false;
 
-    /* ---------- DOM ---------- */
     var landing     = document.getElementById('landing');
     var launchBtn   = document.getElementById('launchBtn');
     var arOverlay   = document.getElementById('arOverlay');
@@ -348,28 +367,27 @@
     var statusDot   = document.getElementById('statusDot');
     var statusText  = document.getElementById('statusText');
     var arLoading   = document.getElementById('arLoading');
+    var loadingText = document.getElementById('loadingText');
     var arContainer = document.getElementById('arContainer');
     var toastEl     = document.getElementById('toast');
     var httpsNotice = document.getElementById('httpsNotice');
 
-    /* ---------- HTTPS Check ---------- */
+    // HTTPS Check
     if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1' && location.hostname !== '') {
         httpsNotice.style.display = 'block';
     }
 
-    /* ---------- QR Code ---------- */
+    // QR Code
     try {
         new QRCode(document.getElementById('qrcode'), {
-            text: location.href,
-            width: 150, height: 150,
-            colorDark: '#060610', colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.M
+            text: location.href, width: 150, height: 150,
+            colorDark: '#060610', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
         });
     } catch(e) {
-        document.getElementById('qrcode').innerHTML = '<p style="color:var(--muted);font-size:0.78rem;padding:16px;text-align:center;">QR unavailable — share URL manually</p>';
+        document.getElementById('qrcode').innerHTML = '<p style="color:var(--muted);font-size:0.78rem;padding:16px;text-align:center;">QR unavailable</p>';
     }
 
-    /* ---------- Toast ---------- */
+    // Toast
     var toastTimer = null;
     function showToast(msg, dur) {
         dur = dur || 3000;
@@ -379,105 +397,107 @@
         toastTimer = setTimeout(function() { toastEl.classList.remove('show'); }, dur);
     }
 
-    /* ---------- Load Scripts ---------- */
+    // Load Script Helper
     function loadScript(src) {
         return new Promise(function(resolve, reject) {
             var s = document.createElement('script');
             s.src = src;
+            s.crossOrigin = 'anonymous';
             s.onload = resolve;
             s.onerror = function() { reject(new Error('Failed to load ' + src)); };
             document.head.appendChild(s);
         });
     }
 
-    async function loadARLibraries() {
-        await loadScript('https://aframe.io/releases/1.4.2/aframe.min.js');
-        await loadScript('https://raw.githack.com/AR-js-org/AR.js/3.4.5/aframe/build/aframe-ar.js');
+    // Fix 5: Camera permission pre-check
+    async function checkCameraPermission() {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            try {
+                // Request temporary access to trigger permission prompt
+                var stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                // Immediately stop all tracks to free the camera for AR.js
+                stream.getTracks().forEach(function(track) { track.stop(); });
+                return true;
+            } catch (err) {
+                if (err.name === 'NotAllowedError') {
+                    throw new Error('Camera permission denied. Please allow camera access in your browser settings and try again.');
+                } else if (err.name === 'NotFoundError') {
+                    throw new Error('No camera found on this device.');
+                } else if (err.name === 'NotReadableError') {
+                    throw new Error('Camera is in use by another application.');
+                }
+                throw new Error('Camera error: ' + err.message);
+            }
+        } else {
+            throw new Error('Camera API not supported. Use a modern HTTPS browser.');
+        }
     }
 
-    /* ========== A-Frame Custom Components ========== */
+    async function loadARLibraries() {
+        loadingText.textContent = 'Loading 3D engine...';
+        await loadScript('https://aframe.io/releases/1.4.2/aframe.min.js');
+        
+        loadingText.textContent = 'Loading AR tracker...';
+        // Fix 6: Use the more stable raw.githack CDN pointing to the maintained AR.js fork
+        await loadScript('https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js');
+    }
+
+    /* ========== A-Frame Components ========== */
     function registerComponents() {
 
-        /* --- Crystal: holographic icosahedron with orbiting rings --- */
         AFRAME.registerComponent('model-crystal', {
             init: function() {
                 var g = new THREE.Group();
-                this.particles = [];
-                this.rings = [];
+                this.particles = []; this.rings = [];
 
-                // Outer wireframe icosahedron
                 var mainGeo = new THREE.IcosahedronGeometry(0.35, 0);
                 var mainMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, wireframe: true, transparent: true, opacity: 0.85 });
-                this.mainMesh = new THREE.Mesh(mainGeo, mainMat);
-                g.add(this.mainMesh);
+                this.mainMesh = new THREE.Mesh(mainGeo, mainMat); g.add(this.mainMesh);
 
-                // Inner translucent solid
                 var innerGeo = new THREE.IcosahedronGeometry(0.22, 1);
                 var innerMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, transparent: true, opacity: 0.18, side: THREE.DoubleSide });
-                this.innerMesh = new THREE.Mesh(innerGeo, innerMat);
-                g.add(this.innerMesh);
+                this.innerMesh = new THREE.Mesh(innerGeo, innerMat); g.add(this.innerMesh);
 
-                // Core glow
                 var coreGeo = new THREE.SphereGeometry(0.08, 12, 12);
                 var coreMat = new THREE.MeshBasicMaterial({ color: 0x00ffaa, transparent: true, opacity: 0.6 });
-                this.core = new THREE.Mesh(coreGeo, coreMat);
-                g.add(this.core);
+                this.core = new THREE.Mesh(coreGeo, coreMat); g.add(this.core);
 
-                // Orbiting torus rings
                 var ringColors = [0x00ffaa, 0x00c8ff, 0x00ffaa];
                 for (var i = 0; i < 3; i++) {
                     var rGeo = new THREE.TorusGeometry(0.48 + i * 0.07, 0.007, 8, 80);
                     var rMat = new THREE.MeshPhongMaterial({ color: ringColors[i], transparent: true, opacity: 0.45 });
                     var ring = new THREE.Mesh(rGeo, rMat);
-                    ring.rotation.x = Math.PI / 2.5 * i;
-                    ring.rotation.y = Math.PI / 3.5 * i;
-                    g.add(ring);
-                    this.rings.push(ring);
+                    ring.rotation.x = Math.PI / 2.5 * i; ring.rotation.y = Math.PI / 3.5 * i;
+                    g.add(ring); this.rings.push(ring);
                 }
 
-                // Floating particles
                 var pGeo = new THREE.SphereGeometry(0.016, 4, 4);
                 for (var j = 0; j < 20; j++) {
                     var pMat = new THREE.MeshPhongMaterial({ color: j % 3 === 0 ? 0x00c8ff : 0x00ffaa });
                     var p = new THREE.Mesh(pGeo, pMat);
-                    var angle = Math.random() * Math.PI * 2;
-                    var r = 0.32 + Math.random() * 0.38;
-                    var y = (Math.random() - 0.5) * 0.9;
+                    var angle = Math.random() * Math.PI * 2; var r = 0.32 + Math.random() * 0.38; var y = (Math.random() - 0.5) * 0.9;
                     p.position.set(Math.cos(angle) * r, y, Math.sin(angle) * r);
                     p.userData = { angle: angle, r: r, y: y, speed: 0.3 + Math.random() * 1.2 };
-                    g.add(p);
-                    this.particles.push(p);
+                    g.add(p); this.particles.push(p);
                 }
 
-                // Base disc
                 var baseGeo = new THREE.CylinderGeometry(0.62, 0.62, 0.012, 48);
                 var baseMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, transparent: true, opacity: 0.1 });
-                var base = new THREE.Mesh(baseGeo, baseMat);
-                base.position.y = -0.55;
-                g.add(base);
+                var base = new THREE.Mesh(baseGeo, baseMat); base.position.y = -0.55; g.add(base);
 
-                // Base ring
                 var bRingGeo = new THREE.TorusGeometry(0.62, 0.01, 8, 64);
                 var bRingMat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, transparent: true, opacity: 0.35 });
-                var bRing = new THREE.Mesh(bRingGeo, bRingMat);
-                bRing.rotation.x = Math.PI / 2;
-                bRing.position.y = -0.545;
-                g.add(bRing);
+                var bRing = new THREE.Mesh(bRingGeo, bRingMat); bRing.rotation.x = Math.PI / 2; bRing.position.y = -0.545; g.add(bRing);
 
-                this.group = g;
-                this.el.setObject3D('model', g);
+                this.group = g; this.el.setObject3D('model', g);
             },
             tick: function(t, dt) {
                 if (this.mainMesh) { this.mainMesh.rotation.x += 0.004; this.mainMesh.rotation.y += 0.007; }
                 if (this.innerMesh) { this.innerMesh.rotation.x -= 0.003; this.innerMesh.rotation.z += 0.004; }
-                if (this.core) {
-                    var sc = 1 + Math.sin(t * 0.003) * 0.15;
-                    this.core.scale.set(sc, sc, sc);
-                }
-                for (var i = 0; i < this.rings.length; i++) { this.rings[i].rotation.z += 0.002 * (i + 1); }
+                if (this.core) { var sc = 1 + Math.sin(t * 0.003) * 0.15; this.core.scale.set(sc, sc, sc); }
+                for (var i = 0; i < this.rings.length; i++) this.rings[i].rotation.z += 0.002 * (i + 1);
                 for (var j = 0; j < this.particles.length; j++) {
-                    var p = this.particles[j];
-                    p.userData.angle += 0.008 * p.userData.speed;
+                    var p = this.particles[j]; p.userData.angle += 0.008 * p.userData.speed;
                     p.position.x = Math.cos(p.userData.angle) * p.userData.r;
                     p.position.z = Math.sin(p.userData.angle) * p.userData.r;
                     p.position.y = p.userData.y + Math.sin(t * 0.001 * p.userData.speed) * 0.08;
@@ -485,95 +505,59 @@
             }
         });
 
-        /* --- Solar System: orbiting planets around a glowing sun --- */
         AFRAME.registerComponent('model-solar', {
             init: function() {
-                var g = new THREE.Group();
-                this.planets = [];
-
-                // Sun
+                var g = new THREE.Group(); this.planets = [];
                 var sunGeo = new THREE.SphereGeometry(0.16, 24, 24);
                 var sunMat = new THREE.MeshPhongMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 0.6 });
-                this.sun = new THREE.Mesh(sunGeo, sunMat);
-                g.add(this.sun);
+                this.sun = new THREE.Mesh(sunGeo, sunMat); g.add(this.sun);
 
-                // Sun glow shell
                 var glowGeo = new THREE.SphereGeometry(0.24, 16, 16);
                 var glowMat = new THREE.MeshPhongMaterial({ color: 0xffcc00, transparent: true, opacity: 0.12 });
-                this.sunGlow = new THREE.Mesh(glowGeo, glowMat);
-                g.add(this.sunGlow);
+                this.sunGlow = new THREE.Mesh(glowGeo, glowMat); g.add(this.sunGlow);
+                g.add(new THREE.PointLight(0xffaa44, 0.8, 3));
 
-                // Point light on sun
-                var sunLight = new THREE.PointLight(0xffaa44, 0.8, 3);
-                g.add(sunLight);
-
-                // Planet data: distance, size, color, orbit speed
                 var pData = [
-                    { d: 0.34, s: 0.035, c: 0xaaaaaa, sp: 2.0 },
-                    { d: 0.48, s: 0.055, c: 0xffaa44, sp: 1.4 },
-                    { d: 0.65, s: 0.06,  c: 0x4499ff, sp: 1.0 },
-                    { d: 0.82, s: 0.045, c: 0xff5533, sp: 0.7 },
-                    { d: 1.0,  s: 0.09,  c: 0xddcc88, sp: 0.45 }
+                    { d: 0.34, s: 0.035, c: 0xaaaaaa, sp: 2.0 }, { d: 0.48, s: 0.055, c: 0xffaa44, sp: 1.4 },
+                    { d: 0.65, s: 0.06, c: 0x4499ff, sp: 1.0 }, { d: 0.82, s: 0.045, c: 0xff5533, sp: 0.7 },
+                    { d: 1.0, s: 0.09, c: 0xddcc88, sp: 0.45 }
                 ];
-
                 for (var i = 0; i < pData.length; i++) {
                     var pd = pData[i];
-                    // Orbit ring
                     var oGeo = new THREE.TorusGeometry(pd.d, 0.003, 8, 80);
                     var oMat = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.08 });
-                    var orbit = new THREE.Mesh(oGeo, oMat);
-                    orbit.rotation.x = Math.PI / 2;
-                    g.add(orbit);
+                    var orbit = new THREE.Mesh(oGeo, oMat); orbit.rotation.x = Math.PI / 2; g.add(orbit);
 
-                    // Planet sphere
                     var pGeo = new THREE.SphereGeometry(Math.max(0.01, pd.s), 16, 16);
                     var pMat = new THREE.MeshPhongMaterial({ color: pd.c });
                     var planet = new THREE.Mesh(pGeo, pMat);
                     planet.userData = { d: pd.d, angle: Math.random() * Math.PI * 2, sp: pd.sp };
-                    g.add(planet);
-                    this.planets.push(planet);
+                    g.add(planet); this.planets.push(planet);
 
-                    // Saturn-like ring for last planet
                     if (i === 4) {
                         var sRingGeo = new THREE.TorusGeometry(0.13, 0.008, 8, 48);
                         var sRingMat = new THREE.MeshPhongMaterial({ color: 0xddcc88, transparent: true, opacity: 0.4 });
-                        var sRing = new THREE.Mesh(sRingGeo, sRingMat);
-                        sRing.rotation.x = Math.PI / 2.5;
-                        planet.add(sRing);
+                        var sRing = new THREE.Mesh(sRingGeo, sRingMat); sRing.rotation.x = Math.PI / 2.5; planet.add(sRing);
                     }
                 }
-
-                // Background star dots
-                var starGeo = new THREE.SphereGeometry(0.006, 4, 4);
-                var starMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                var starGeo = new THREE.SphereGeometry(0.006, 4, 4); var starMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
                 for (var j = 0; j < 50; j++) {
                     var star = new THREE.Mesh(starGeo, starMat);
-                    var theta = Math.random() * Math.PI * 2;
-                    var phi = Math.random() * Math.PI;
-                    var r = 1.15 + Math.random() * 0.35;
+                    var theta = Math.random() * Math.PI * 2; var phi = Math.random() * Math.PI; var r = 1.15 + Math.random() * 0.35;
                     star.position.set(r * Math.sin(phi) * Math.cos(theta), (Math.random() - 0.5) * 1.6, r * Math.sin(phi) * Math.sin(theta));
                     g.add(star);
                 }
-
-                // Base
                 var baseGeo = new THREE.CylinderGeometry(0.62, 0.62, 0.012, 48);
                 var baseMat = new THREE.MeshPhongMaterial({ color: 0xffaa00, transparent: true, opacity: 0.06 });
-                var base = new THREE.Mesh(baseGeo, baseMat);
-                base.position.y = -0.55;
-                g.add(base);
+                var base = new THREE.Mesh(baseGeo, baseMat); base.position.y = -0.55; g.add(base);
 
-                this.group = g;
-                this.el.setObject3D('model', g);
+                this.group = g; this.el.setObject3D('model', g);
             },
             tick: function(t, dt) {
                 if (this.sun) this.sun.rotation.y += 0.003;
-                if (this.sunGlow) {
-                    var s = 1 + Math.sin(t * 0.002) * 0.06;
-                    this.sunGlow.scale.set(s, s, s);
-                }
+                if (this.sunGlow) { var s = 1 + Math.sin(t * 0.002) * 0.06; this.sunGlow.scale.set(s, s, s); }
                 for (var i = 0; i < this.planets.length; i++) {
-                    var p = this.planets[i];
-                    p.userData.angle += 0.006 * p.userData.sp;
+                    var p = this.planets[i]; p.userData.angle += 0.006 * p.userData.sp;
                     p.position.x = Math.cos(p.userData.angle) * p.userData.d;
                     p.position.z = Math.sin(p.userData.angle) * p.userData.d;
                     p.position.y = Math.sin(p.userData.angle * 2) * 0.015;
@@ -581,139 +565,69 @@
             }
         });
 
-        /* --- Rocket: launching rocket with exhaust particles --- */
         AFRAME.registerComponent('model-rocket', {
             init: function() {
-                var g = new THREE.Group();
-                this.exhaust = [];
-
-                // Nose cone
+                var g = new THREE.Group(); this.exhaust = [];
                 var noseGeo = new THREE.ConeGeometry(0.09, 0.24, 16);
                 var noseMat = new THREE.MeshPhongMaterial({ color: 0xff2d2d });
-                var nose = new THREE.Mesh(noseGeo, noseMat);
-                nose.position.y = 0.62;
-                g.add(nose);
+                var nose = new THREE.Mesh(noseGeo, noseMat); nose.position.y = 0.62; g.add(nose);
 
-                // Body cylinder
                 var bodyGeo = new THREE.CylinderGeometry(0.09, 0.11, 0.48, 16);
                 var bodyMat = new THREE.MeshPhongMaterial({ color: 0xeeeeee });
-                var body = new THREE.Mesh(bodyGeo, bodyMat);
-                body.position.y = 0.26;
-                g.add(body);
+                var body = new THREE.Mesh(bodyGeo, bodyMat); body.position.y = 0.26; g.add(body);
 
-                // Window
                 var winGeo = new THREE.SphereGeometry(0.03, 12, 12);
                 var winMat = new THREE.MeshPhongMaterial({ color: 0x00c8ff, emissive: 0x005588, emissiveIntensity: 0.5 });
-                var win = new THREE.Mesh(winGeo, winMat);
-                win.position.set(0, 0.38, 0.085);
-                g.add(win);
+                var win = new THREE.Mesh(winGeo, winMat); win.position.set(0, 0.38, 0.085); g.add(win);
 
-                // Red stripe
                 var strGeo = new THREE.CylinderGeometry(0.092, 0.092, 0.05, 16);
                 var strMat = new THREE.MeshPhongMaterial({ color: 0xff2d2d });
-                var stripe = new THREE.Mesh(strGeo, strMat);
-                stripe.position.y = 0.18;
-                g.add(stripe);
+                var stripe = new THREE.Mesh(strGeo, strMat); stripe.position.y = 0.18; g.add(stripe);
 
-                // 3 Fins
                 var finGeo = new THREE.ConeGeometry(0.07, 0.18, 4);
                 var finMat = new THREE.MeshPhongMaterial({ color: 0x333344 });
                 for (var i = 0; i < 3; i++) {
-                    var fin = new THREE.Mesh(finGeo, finMat);
-                    var a = (i / 3) * Math.PI * 2;
+                    var fin = new THREE.Mesh(finGeo, finMat); var a = (i / 3) * Math.PI * 2;
                     fin.position.set(Math.cos(a) * 0.11, -0.06, Math.sin(a) * 0.11);
-                    fin.rotation.z = Math.cos(a) * 0.55;
-                    fin.rotation.x = -Math.sin(a) * 0.55;
-                    g.add(fin);
+                    fin.rotation.z = Math.cos(a) * 0.55; fin.rotation.x = -Math.sin(a) * 0.55; g.add(fin);
                 }
-
-                // Nozzle
                 var nozGeo = new THREE.CylinderGeometry(0.055, 0.035, 0.07, 12);
                 var nozMat = new THREE.MeshPhongMaterial({ color: 0x444455 });
-                var noz = new THREE.Mesh(nozGeo, nozMat);
-                noz.position.y = -0.02;
-                g.add(noz);
+                var noz = new THREE.Mesh(nozGeo, nozMat); noz.position.y = -0.02; g.add(noz);
 
-                // Exhaust flame core
                 var flameGeo = new THREE.ConeGeometry(0.04, 0.15, 12);
                 var flameMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.7 });
-                this.flame = new THREE.Mesh(flameGeo, flameMat);
-                this.flame.rotation.x = Math.PI; // point downward
-                this.flame.position.y = -0.12;
-                g.add(this.flame);
+                this.flame = new THREE.Mesh(flameGeo, flameMat); this.flame.rotation.x = Math.PI; this.flame.position.y = -0.12; g.add(this.flame);
 
-                // Exhaust particles
                 var exGeo = new THREE.SphereGeometry(0.015, 4, 4);
-        var exColors = [0xffcc00, 0xff8800, 0xff4400, 0xff2200];
+                var exColors = [0xffcc00, 0xff8800, 0xff4400, 0xff2200];
                 for (var j = 0; j < 14; j++) {
                     var exMat = new THREE.MeshPhongMaterial({ color: exColors[j % 4], transparent: true, opacity: 0.6 });
                     var ex = new THREE.Mesh(exGeo, exMat);
                     ex.userData = { angle: Math.random() * Math.PI * 2, speed: 0.6 + Math.random() * 1.5, life: Math.random(), maxLife: 0.4 + Math.random() * 0.5 };
-                    g.add(ex);
-                    this.exhaust.push(ex);
+                    g.add(ex); this.exhaust.push(ex);
                 }
-
-                // Launch pad
                 var padGeo = new THREE.CylinderGeometry(0.45, 0.5, 0.035, 6);
                 var padMat = new THREE.MeshPhongMaterial({ color: 0x444455 });
-                var pad = new THREE.Mesh(padGeo, padMat);
-                pad.position.y = -0.2;
-                g.add(pad);
-
-                // Pad rim
-                var rimGeo = new THREE.TorusGeometry(0.48, 0.012, 8, 6);
-                var rimMat = new THREE.MeshPhongMaterial({ color: 0x666677 });
-                var rim = new THREE.Mesh(rimGeo, rimMat);
-                rim.rotation.x = Math.PI / 2;
-                rim.position.y = -0.18;
-                g.add(rim);
-
-                // Support struts
-                for (var k = 0; k < 3; k++) {
-                    var strutGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.22, 6);
-                    var strutMat = new THREE.MeshPhongMaterial({ color: 0x555566 });
-                    var strut = new THREE.Mesh(strutGeo, strutMat);
-                    var sa = (k / 3) * Math.PI * 2 + 0.5;
-                    strut.position.set(Math.cos(sa) * 0.15, -0.12, Math.sin(sa) * 0.15);
-                    strut.rotation.z = Math.cos(sa) * 0.35;
-                    strut.rotation.x = -Math.sin(sa) * 0.35;
-                    g.add(strut);
-                }
-
-                this.rocketGroup = g;
-                this.time = 0;
-                this.el.setObject3D('model', g);
+                var pad = new THREE.Mesh(padGeo, padMat); pad.position.y = -0.2; g.add(pad);
+                
+                this.rocketGroup = g; this.time = 0; this.el.setObject3D('model', g);
             },
             tick: function(t, dt) {
                 this.time += dt * 0.001;
-
-                // Bobbing motion
                 if (this.rocketGroup) {
-                    this.rocketGroup.position.y = Math.sin(this.time * 1.8) * 0.04;
-                    this.rocketGroup.rotation.y += 0.002;
+                    this.rocketGroup.position.y = Math.sin(this.time * 1.8) * 0.04; this.rocketGroup.rotation.y += 0.002;
                 }
-
-                // Flame flicker
                 if (this.flame) {
                     var fsc = 0.9 + Math.sin(t * 0.015) * 0.3;
                     this.flame.scale.set(fsc, fsc * (1 + Math.sin(t * 0.02) * 0.2), fsc);
                     this.flame.material.opacity = 0.5 + Math.sin(t * 0.012) * 0.2;
                 }
-
-                // Exhaust particles
                 for (var i = 0; i < this.exhaust.length; i++) {
-                    var p = this.exhaust[i];
-                    p.userData.life += dt * 0.001 * p.userData.speed;
-                    if (p.userData.life > p.userData.maxLife) {
-                        p.userData.life = 0;
-                        p.userData.angle = Math.random() * Math.PI * 2;
-                    }
+                    var p = this.exhaust[i]; p.userData.life += dt * 0.001 * p.userData.speed;
+                    if (p.userData.life > p.userData.maxLife) { p.userData.life = 0; p.userData.angle = Math.random() * Math.PI * 2; }
                     var prog = p.userData.life / p.userData.maxLife;
-                    p.position.set(
-                        Math.cos(p.userData.angle) * prog * 0.1,
-                        -0.16 - prog * 0.35,
-                        Math.sin(p.userData.angle) * prog * 0.1
-                    );
+                    p.position.set(Math.cos(p.userData.angle) * prog * 0.1, -0.16 - prog * 0.35, Math.sin(p.userData.angle) * prog * 0.1);
                     p.scale.setScalar(Math.max(0.01, 1 - prog * 0.6));
                     if (p.material) p.material.opacity = Math.max(0, (1 - prog) * 0.6);
                 }
@@ -723,31 +637,47 @@
 
     /* ========== Create AR Scene ========== */
     function createScene() {
-        arContainer.style.display = 'block';
-        arContainer.innerHTML =
-            '<a-scene embedded ' +
-            'arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;" ' +
-            'vr-mode-ui="enabled: false" ' +
-            'renderer="logarithmicDepthBuffer: true; precision: medium; alpha: true;" ' +
-            'loading-screen="enabled: false">' +
-                '<a-marker preset="hiro" id="arMarker" emitevents="true" smooth="true" smoothCount="5" smoothTolerance="0.01" smoothThreshold="2">' +
-                    '<a-entity id="modelEntity" model-crystal position="0 0.5 0" scale="1 1 1"></a-entity>' +
-                '</a-marker>' +
-                '<a-entity light="type: ambient; color: #ffffff; intensity: 0.55"></a-entity>' +
-                '<a-entity light="type: directional; color: #ffffff; intensity: 0.7" position="1 2 1"></a-entity>' +
-                '<a-entity light="type: directional; color: #8888ff; intensity: 0.3" position="-1 1 -1"></a-entity>' +
-                '<a-entity camera></a-entity>' +
-            '</a-scene>';
+        // Fix 7: Build scene HTML string and inject via innerHTML *before* A-Frame parses it
+        var sceneHTML = `
+            <a-scene embedded 
+                arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;" 
+                vr-mode-ui="enabled: false" 
+                renderer="logarithmicDepthBuffer: true; precision: medium; alpha: true;" 
+                loading-screen="enabled: false"
+                style="position: absolute !important; top: 0; left: 0; width: 100% !important; height: 100% !important;">
+                
+                <a-marker preset="hiro" id="arMarker" emitevents="true" smooth="true" smoothCount="5" smoothTolerance="0.01" smoothThreshold="2">
+                    <a-entity id="modelEntity" model-crystal position="0 0.5 0" scale="1 1 1"></a-entity>
+                </a-marker>
+                
+                <a-entity light="type: ambient; color: #ffffff; intensity: 0.55"></a-entity>
+                <a-entity light="type: directional; color: #ffffff; intensity: 0.7" position="1 2 1"></a-entity>
+                <a-entity light="type: directional; color: #8888ff; intensity: 0.3" position="-1 1 -1"></a-entity>
+                <a-entity camera></a-entity>
+            </a-scene>
+        `;
+        
+        arContainer.innerHTML = sceneHTML;
+        arContainer.classList.add('active');
 
-        // Wait for A-Frame scene to be ready
-        var scene = document.querySelector('a-scene');
-        if (scene && scene.hasLoaded) {
-            setupMarkerEvents();
-        } else if (scene) {
-            scene.addEventListener('loaded', function() { setupMarkerEvents(); });
-            // Fallback timeout
-            setTimeout(function() { setupMarkerEvents(); }, 4000);
-        }
+        // Fix 8: Aggressively fix mobile scaling after AR.js initializes the video element
+        setTimeout(function() {
+            var video = document.querySelector('video');
+            if (video) {
+                video.setAttribute('playsinline', '');
+                video.setAttribute('muted', '');
+                video.muted = true;
+                video.playsInline = true;
+            }
+            
+            // Fix 9: Reset viewport scale bug caused by AR.js on iOS
+            var viewport = document.querySelector('meta[name="viewport"]');
+            if (viewport) {
+                viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
+            }
+        }, 1500);
+
+        setupMarkerEvents();
     }
 
     function setupMarkerEvents() {
@@ -776,11 +706,9 @@
     function switchModel(modelName) {
         if (!sceneCreated) return;
         currentModel = modelName;
-
         var entity = document.getElementById('modelEntity');
         if (!entity) return;
 
-        // Dispose old Three.js objects to prevent memory leaks
         var oldModel = entity.getObject3D('model');
         if (oldModel) {
             oldModel.traverse(function(child) {
@@ -793,17 +721,14 @@
             entity.removeObject3D('model');
         }
 
-        // Remove all model components
         ['model-crystal', 'model-solar', 'model-rocket'].forEach(function(comp) {
             try { if (entity.hasAttribute(comp)) entity.removeAttribute(comp); } catch(e) {}
         });
 
-        // Add new component after a brief delay
         setTimeout(function() {
             try { entity.setAttribute('model-' + modelName, ''); } catch(e) { console.error('Model switch error:', e); }
         }, 80);
 
-        // Update button active states
         document.querySelectorAll('.mbtn').forEach(function(btn) {
             btn.classList.toggle('active', btn.dataset.model === modelName);
         });
@@ -813,16 +738,13 @@
     }
 
     /* ========== Event Listeners ========== */
-
-    // Launch AR
     launchBtn.addEventListener('click', async function() {
         launchBtn.disabled = true;
 
-        // If scene already exists, just show it
         if (sceneCreated) {
             landing.classList.add('hidden');
             arOverlay.classList.add('active');
-            arContainer.style.display = 'block';
+            arContainer.classList.add('active');
             launchBtn.disabled = false;
             return;
         }
@@ -830,9 +752,19 @@
         arLoading.classList.add('active');
 
         try {
-            // Dynamically load A-Frame and AR.js (keeps landing page fast)
+            // 1. Check camera permissions upfront to give clear errors
+            loadingText.textContent = 'Requesting camera access...';
+            await checkCameraPermission();
+
+            // 2. Load libs
             await loadARLibraries();
+            
+            // 3. Register 3D models
+            loadingText.textContent = 'Preparing 3D models...';
             registerComponents();
+
+            // 4. Start AR
+            loadingText.textContent = 'Starting camera...';
             createScene();
             sceneCreated = true;
 
@@ -841,21 +773,19 @@
             showToast('Camera activated — point at the Hiro marker', 3500);
         } catch(e) {
             console.error('AR init error:', e);
-            showToast('Failed to start AR: ' + e.message, 5000);
-        } finally {
+            showToast(e.message || 'Failed to start AR', 5000);
             arLoading.classList.remove('active');
+        } finally {
             launchBtn.disabled = false;
         }
     });
 
-    // Back button
     backBtn.addEventListener('click', function() {
         arOverlay.classList.remove('active');
         landing.classList.remove('hidden');
-        arContainer.style.display = 'none';
+        arContainer.classList.remove('active');
     });
 
-    // Model switch buttons
     document.querySelectorAll('.mbtn').forEach(function(btn) {
         btn.addEventListener('click', function() { switchModel(btn.dataset.model); });
     });
