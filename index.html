@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>WebAR Pteradactal - QR Tracking</title>
     
-    <!-- CSS -->
     <link rel="stylesheet" href="css/style.css" />
     
-    <!-- Three.js & WebXR -->
     <script type="importmap">
         {
             "imports": {
@@ -19,15 +17,14 @@
     </script>
 </head>
 <body>
-    <!-- Loading Screen -->
     <div id="loading-screen">
         <div class="loader-container">
             <div class="loader"></div>
             <p id="loading-text">Initializing AR...</p>
+            <p id="debug-info" style="color: #ff6b6b; font-size: 12px; margin-top: 20px; max-width: 300px; word-wrap: break-word;"></p>
         </div>
     </div>
 
-    <!-- Instructions -->
     <div id="instructions" style="display: none;">
         <div class="instruction-box">
             <h2>📱 Point your camera at the QR code</h2>
@@ -36,13 +33,9 @@
         </div>
     </div>
 
-    <!-- AR Container -->
     <div id="ar-container"></div>
-
-    <!-- Status Messages -->
     <div id="status-message"></div>
 
-    <!-- Main Application -->
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

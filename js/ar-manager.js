@@ -3,6 +3,7 @@ import { ARButton } from 'three/addons/webxr/ARButton.js';
 
 export class ARManager {
     constructor(options = {}) {
+        console.log('🔧 ARManager created');
         this.options = options;
         this.renderer = null;
         this.scene = null;
@@ -10,12 +11,13 @@ export class ARManager {
         this.session = null;
         this.isRunning = false;
         this.models = [];
-        this.qrPositions = new Map();
         
         this.setupScene();
         this.setupRenderer();
         this.setupCamera();
         this.setupLights();
+        
+        console.log('✅ ARManager setup complete');
     }
     
     setupScene() {
@@ -25,6 +27,11 @@ export class ARManager {
     
     setupRenderer() {
         const container = document.getElementById('ar-container');
+        if (!container) {
+            console.error('❌ AR container not found!');
+            return;
+        }
+        console.log('📦 AR container found');
         
         this.renderer = new THREE.WebGLRenderer({
             antialias: true,
@@ -39,8 +46,8 @@ export class ARManager {
         this.renderer.toneMappingExposure = 1.0;
         
         container.appendChild(this.renderer.domElement);
+        console.log('✅ Renderer added to DOM');
         
-        // Handle resize
         window.addEventListener('resize', () => {
             this.renderer.setSize(window.innerWidth, window.innerHeight);
             this.camera.aspect = window.innerWidth / window.innerHeight;
@@ -55,56 +62,59 @@ export class ARManager {
     }
     
     setupLights() {
-        // Ambient light
         const ambient = new THREE.AmbientLight(0x404040, 0.5);
         this.scene.add(ambient);
         
-        // Directional light
         const directional = new THREE.DirectionalLight(0xffffff, 1.0);
         directional.position.set(0, 5, 5);
         directional.castShadow = true;
         this.scene.add(directional);
         
-        // Fill light
         const fill = new THREE.DirectionalLight(0x4488ff, 0.3);
         fill.position.set(-5, 0, 5);
         this.scene.add(fill);
         
-        // Back light
         const back = new THREE.DirectionalLight(0xff8844, 0.2);
         back.position.set(0, 0, -5);
         this.scene.add(back);
         
-        // Hemisphere light for better ambient
         const hemi = new THREE.HemisphereLight(0x87ceeb, 0x362d1e, 0.3);
         this.scene.add(hemi);
+        
+        console.log('✅ Lights setup complete');
     }
     
     async checkSupport() {
+        console.log('🔍 Checking WebXR support...');
         if (!navigator.xr) {
-            console.warn('WebXR not supported');
+            console.warn('❌ WebXR not supported');
             return false;
         }
         
         try {
             const supported = await navigator.xr.isSessionSupported('immersive-ar');
+            console.log(`✅ WebXR immersive-ar supported: ${supported}`);
             return supported;
         } catch (error) {
-            console.warn('Error checking WebXR support:', error);
+            console.warn('❌ Error checking WebXR support:', error);
             return false;
         }
     }
     
     async startARSession() {
-        if (this.isRunning) return;
+        console.log('🚀 Starting AR session...');
+        if (this.isRunning) {
+            console.log('⚠️ AR already running');
+            return;
+        }
         
         try {
-            // Create AR button and simulate click
             const arButton = ARButton.createButton(this.renderer, {
                 requiredFeatures: ['hit-test', 'local-floor'],
                 optionalFeatures: ['dom-overlay'],
                 domOverlay: { root: document.body },
                 onSessionStarted: (session) => {
+                    console.log('✅ AR Session Started!');
                     this.session = session;
                     this.isRunning = true;
                     
@@ -115,6 +125,7 @@ export class ARManager {
                     this.animate();
                 },
                 onSessionEnded: () => {
+                    console.log('⏹️ AR Session Ended');
                     this.isRunning = false;
                     if (this.options.onSessionEnded) {
                         this.options.onSessionEnded();
@@ -122,11 +133,12 @@ export class ARManager {
                 }
             });
             
-            // Trigger click on AR button
+            console.log('🖱️ Clicking AR button...');
             arButton.click();
+            console.log('✅ AR button clicked');
             
         } catch (error) {
-            console.error('Failed to start AR session:', error);
+            console.error('❌ Failed to start AR session:', error);
             if (this.options.onError) {
                 this.options.onError(error);
             }
@@ -138,18 +150,17 @@ export class ARManager {
         if (model) {
             this.models.push(model);
             this.scene.add(model);
-            
-            // Initially hide model until QR detected
             model.visible = false;
+            console.log('✅ Model added to scene (hidden)');
         }
     }
     
     showModelAtQRPosition(model) {
         if (model) {
             model.visible = true;
-            // Animate appearance
             model.scale.set(0, 0, 0);
             this.animateScale(model, 0, 1, 500);
+            console.log('✅ Model shown with animation');
         }
     }
     
@@ -159,8 +170,6 @@ export class ARManager {
         const update = () => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
-            
-            // Ease out cubic
             const eased = 1 - Math.pow(1 - progress, 3);
             const scale = from + (to - from) * eased;
             
@@ -184,10 +193,9 @@ export class ARManager {
         if (!this.isRunning) return;
         
         this.renderer.setAnimationLoop(() => {
-            // Update animations for all models
             this.models.forEach(model => {
                 if (model.userData && model.userData.mixer) {
-                    model.userData.mixer.update(0.016); // 60fps delta
+                    model.userData.mixer.update(0.016);
                 }
             });
             
