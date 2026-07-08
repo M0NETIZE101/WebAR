@@ -110,7 +110,7 @@
                 <!-- 🚗 CAR MODEL (from car.glb file) -->
                 <a-entity 
                     id="car-model" 
-                    gltf-model="url(car.glb)" 
+                    gltf-model="url(./car.glb)" 
                     scale="0.15 0.15 0.15" 
                     rotation="0 0 0"
                     animation-mixer
@@ -119,7 +119,7 @@
                 <!-- 🐦 CROW MODEL (from models/animated_crow/scene.gltf) -->
                 <a-entity 
                     id="crow-model" 
-                    gltf-model="url(models/animated_crow/scene.gltf)" 
+                    gltf-model="url(./models/animated_crow/scene.gltf)" 
                     scale="0.5 0.5 0.5" 
                     rotation="0 0 0"
                     animation-mixer
@@ -211,7 +211,7 @@
     }
 
     // ==========================================
-    // MODEL SWITCHING (UPDATED WITH CROW)
+    // MODEL SWITCHING
     // ==========================================
     function setupModelSwitching() {
         const models = {
@@ -327,7 +327,6 @@
 
             showToast('AR Ready! Tap screen to place model', 2000);
             console.log('[AR] Markerless AR ready!');
-            console.log('[AR] Models available: car, crow, crystal, solar, rocket');
 
         } catch (err) {
             console.error('[AR] Error:', err);
@@ -375,4 +374,5 @@
 
     console.log('[AR] App ready - markerless mode');
     console.log('[AR] Models: car.glb, animated_crow/scene.gltf, and procedural models');
+    console.log('[AR] Path: ./models/animated_crow/scene.gltf');
 })();
