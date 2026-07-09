@@ -5,17 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>QR-Embedded AR Marker Experience</title>
 
-    <!-- A-Frame 1.4.0 (stable with AR.js 2.2.4) -->
+    <!-- A-Frame 1.4.0 (stable with AR.js) -->
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     
-    <!-- AR.js via jsDelivr ONLY - no unofficial mirrors -->
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.4/aframe/build/aframe-ar.min.js"></script>
-
-    <!--
-        aframe-extras is NOT needed for this model (no baked animations).
-        If you add a model with animations later, uncomment this:
-        <script src="https://cdn.jsdelivr.net/npm/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+    <!-- 
+        ✅ FIXED: AR.js via jsDelivr GitHub mirror
+        NOTE: This uses the master branch (unversioned).
+        For a pinned version, we'd need to check available tags.
     -->
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
 
     <style>
         /* ===== RESET & FULLSCREEN ===== */
