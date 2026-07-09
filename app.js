@@ -24,6 +24,21 @@
     let videoStream = null;
 
     // ==========================================
+    // MOBILE DETECTION
+    // ==========================================
+    function isMobile() {
+        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    }
+
+    function isAndroid() {
+        return /Android/i.test(navigator.userAgent);
+    }
+
+    function isIOS() {
+        return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    }
+
+    // ==========================================
     // UI HELPERS
     // ==========================================
     function showLoading(text) {
@@ -74,34 +89,52 @@
     }
 
     // ==========================================
-    // REQUEST CAMERA PERMISSION (Nuclear option)
+    // REQUEST CAMERA PERMISSION (Mobile Fix)
     // ==========================================
     async function requestCameraPermission() {
         showLoading('Requesting camera access...');
 
         try {
-            // 🔥 Create a video element we'll control
+            // 🔥 Mobile fix: Use simpler constraints that work on all devices
+            const constraints = {
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 640 },  // 🔥 Lower resolution for mobile
+                    height: { ideal: 480 }
+                }
+            };
+
+            // 🔥 iOS needs specific handling
+            if (isIOS()) {
+                // iOS Safari requires these exact settings
+                constraints.video = {
+                    facingMode: 'environment',
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    frameRate: { ideal: 30 }
+                };
+            }
+
+            // 🔥 Create video element with mobile-friendly attributes
             videoElement = document.createElement('video');
             videoElement.id = 'ar-video';
             videoElement.setAttribute('autoplay', '');
-            videoElement.setAttribute('playsinline', '');
-            videoElement.setAttribute('muted', '');
+            videoElement.setAttribute('playsinline', '');  // 🔥 Required for iOS
+            videoElement.setAttribute('muted', '');        // 🔥 Required for autoplay
+            videoElement.setAttribute('webkit-playsinline', ''); // 🔥 iOS 14+
             videoElement.style.display = 'none';
             document.body.appendChild(videoElement);
 
             // Get the camera stream
-            videoStream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: 'environment',
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
-            });
-
+            videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+            
             // Attach to our video element
             videoElement.srcObject = videoStream;
+            
+            // 🔥 Mobile fix: Ensure video plays (user gesture already happened)
             await videoElement.play();
-            console.log('[AR] Manual video stream started');
+            
+            console.log('[AR] Manual video stream started (mobile: ' + (isMobile() ? 'yes' : 'no') + ')');
 
             return true;
 
@@ -121,38 +154,43 @@
     }
 
     // ==========================================
-    // INITIALIZE AR.JS (using pre-created video)
+    // INITIALIZE AR.JS (Mobile Optimized)
     // ==========================================
     function initializeARJS() {
         return new Promise((resolve, reject) => {
             showLoading('Initializing AR engine...');
 
-            // 🔥 Tell AR.js to use our pre-created video element
-            scene.setAttribute('arjs', [
+            // 🔥 Mobile fix: Add mobile-specific arjs settings
+            const arjsConfig = [
                 'sourceType: webcam',
-                'video: #ar-video',  // Use our video element
+                'video: #ar-video',
                 'debugUIEnabled: false',
                 'detectionMode: mono_and_matrix',
                 'matrixCodeType: 3x3',
-                'trackingMethod: best'
-            ].join('; '));
+                'trackingMethod: best',
+                'performance: fast',           // 🔥 Mobile optimization
+                'maxDetectionRate: 30',        // 🔥 Reduce CPU usage
+                'canvasWidth: 640',            // 🔥 Lower resolution for mobile
+                'canvasHeight: 480'
+            ].join('; ');
+
+            scene.setAttribute('arjs', arjsConfig);
 
             const startTime = Date.now();
-            const timeout = 15000;
+            const timeout = 20000;  // 🔥 Longer timeout for mobile
 
             function checkARSystem() {
                 const arSystem = scene.systems && scene.systems['arjs'];
-                const video = document.querySelector('video');
                 
-                // Check if our video is still playing
+                // 🔥 Check if our video is still playing
                 if (videoElement) {
-                    console.log('[AR] Our video - readyState:', videoElement.readyState, 
+                    console.log('[AR] Video - readyState:', videoElement.readyState, 
                         'paused:', videoElement.paused, 
                         'width:', videoElement.videoWidth);
                     
-                    // If our video paused unexpectedly, try to resume
+                    // 🔥 Mobile fix: Try to resume if paused
                     if (videoElement.paused && videoElement.srcObject) {
-                        console.warn('[AR] Our video paused - attempting resume...');
+                        console.warn('[AR] Video paused - attempting resume...');
                         videoElement.play().catch(e => console.warn('[AR] Resume failed:', e));
                     }
                 }
@@ -285,7 +323,7 @@
             }, 5000);
 
             isARStarted = true;
-            console.log('[AR] AR experience ready');
+            console.log('[AR] AR experience ready (mobile: ' + (isMobile() ? 'yes' : 'no') + ')');
 
         } catch (err) {
             console.error('[AR] Start error:', err);
@@ -324,8 +362,9 @@
         loading.classList.add('hidden');
         markerPrompt.classList.add('hidden');
 
-        console.log('[AR] App initialized');
-        console.log('[AR] 🔥 Using nuclear option: pre-created video element');
+        console.log('[AR] App initialized - Mobile optimized');
+        console.log('[AR] Device:', isMobile() ? (isAndroid() ? 'Android' : isIOS() ? 'iOS' : 'Desktop') : 'Desktop');
+        console.log('[AR] 📌 Marker ID: 0 (3x3 barcode)');
     }
 
     init();
