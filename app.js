@@ -49,45 +49,113 @@
     }
 
     // ==========================================
-    // FORCE CANVAS ON TOP OF VIDEO
+    // 🔥 FORCE FULLSCREEN LAYERS — RUN ONCE
     // ==========================================
-    function forceCanvasOnTop() {
-        const canvas = document.querySelector('canvas');
-        const video = document.querySelector('video');
+    let layersFixed = false;
+
+    function forceFullscreenLayers() {
+        // Only run once
+        if (layersFixed) return;
         
-        if (canvas) {
-            canvas.style.setProperty('z-index', '10', 'important');
-            canvas.style.setProperty('position', 'fixed', 'important');
-            canvas.style.setProperty('top', '0', 'important');
-            canvas.style.setProperty('left', '0', 'important');
-            canvas.style.setProperty('width', '100%', 'important');
-            canvas.style.setProperty('height', '100%', 'important');
-            canvas.style.setProperty('background', 'transparent', 'important');
-            canvas.style.setProperty('pointer-events', 'auto', 'important');
-            console.log('[AR] ✅ Canvas z-index forced to 10');
-        } else {
-            console.warn('[AR] ⚠️ Canvas not found yet, retrying...');
-            setTimeout(forceCanvasOnTop, 500);
-            return;
-        }
-
-        if (video) {
-            video.style.setProperty('z-index', '0', 'important');
-            video.style.setProperty('position', 'fixed', 'important');
-            video.style.setProperty('top', '0', 'important');
-            video.style.setProperty('left', '0', 'important');
-            video.style.setProperty('width', '100vw', 'important');
-            video.style.setProperty('height', '100vh', 'important');
-            video.style.setProperty('object-fit', 'cover', 'important');
-            video.style.setProperty('pointer-events', 'none', 'important');
-            console.log('[AR] ✅ Video z-index forced to 0');
-        }
-
+        const videos = document.querySelectorAll('video');
+        const canvas = document.querySelector('canvas');
         const sceneEl = document.querySelector('a-scene');
-        if (sceneEl) {
-            sceneEl.style.setProperty('z-index', '1', 'important');
-            console.log('[AR] ✅ Scene z-index forced to 1');
+
+        // Force body to fullscreen
+        document.body.style.cssText =
+            'margin:0!important;' +
+            'padding:0!important;' +
+            'width:100vw!important;' +
+            'height:100vh!important;' +
+            'overflow:hidden!important;' +
+            'position:fixed!important;' +
+            'top:0!important;' +
+            'left:0!important;' +
+            'background:#000!important;' +
+            'max-width:100vw!important;' +
+            'max-height:100vh!important;';
+
+        // Force HTML to fullscreen
+        document.documentElement.style.cssText =
+            'margin:0!important;' +
+            'padding:0!important;' +
+            'width:100vw!important;' +
+            'height:100vh!important;' +
+            'overflow:hidden!important;' +
+            'background:#000!important;' +
+            'max-width:100vw!important;' +
+            'max-height:100vh!important;';
+
+        videos.forEach((video) => {
+            // Only set styles if not already set
+            if (!video._fixed) {
+                video.style.cssText =
+                    'position:fixed!important;' +
+                    'top:0!important;' +
+                    'left:0!important;' +
+                    'width:100vw!important;' +
+                    'height:100vh!important;' +
+                    'min-width:100vw!important;' +
+                    'min-height:100vh!important;' +
+                    'max-width:100vw!important;' +
+                    'max-height:100vh!important;' +
+                    'object-fit:cover!important;' +
+                    'z-index:0!important;' +
+                    'pointer-events:none!important;' +
+                    'background:#000!important;' +
+                    'margin:0!important;' +
+                    'padding:0!important;' +
+                    'border:none!important;' +
+                    'transform:none!important;' +
+                    'transform-origin:0 0!important;' +
+                    'clip:none!important;';
+                video._fixed = true;
+                console.log('[AR] ✅ Video forced to fullscreen');
+            }
+        });
+
+        if (canvas && !canvas._fixed) {
+            canvas.style.cssText =
+                'position:fixed!important;' +
+                'top:0!important;' +
+                'left:0!important;' +
+                'width:100vw!important;' +
+                'height:100vh!important;' +
+                'min-width:100vw!important;' +
+                'min-height:100vh!important;' +
+                'max-width:100vw!important;' +
+                'max-height:100vh!important;' +
+                'z-index:10!important;' +
+                'background:transparent!important;' +
+                'pointer-events:auto!important;' +
+                'margin:0!important;' +
+                'padding:0!important;' +
+                'border:none!important;' +
+                'transform:none!important;';
+            canvas._fixed = true;
+            console.log('[AR] ✅ Canvas forced to fullscreen');
         }
+
+        if (sceneEl && !sceneEl._fixed) {
+            sceneEl.style.cssText =
+                'position:fixed!important;' +
+                'top:0!important;' +
+                'left:0!important;' +
+                'width:100vw!important;' +
+                'height:100vh!important;' +
+                'max-width:100vw!important;' +
+                'max-height:100vh!important;' +
+                'z-index:1!important;' +
+                'background:transparent!important;' +
+                'overflow:hidden!important;' +
+                'margin:0!important;' +
+                'padding:0!important;' +
+                'border:none!important;';
+            sceneEl._fixed = true;
+            console.log('[AR] ✅ Scene forced to fullscreen');
+        }
+
+        layersFixed = true;
     }
 
     // ==========================================
@@ -135,7 +203,6 @@
             stream.getTracks().forEach(track => track.stop());
             console.log('[AR] ✅ Manual camera stream stopped');
 
-            // 🔥 500ms delay for Android
             await new Promise(resolve => setTimeout(resolve, 500));
             console.log('[AR] ✅ Camera release delay complete');
 
@@ -180,7 +247,6 @@
                 const arSystem = scene.systems && scene.systems['arjs'];
                 const video = document.querySelector('video');
 
-                // Log video state changes
                 if (video && video.readyState !== lastReadyState) {
                     lastReadyState = video.readyState;
                     console.log('[AR] Video readyState:', video.readyState,
@@ -188,28 +254,24 @@
                         'width:', video.videoWidth);
                 }
 
-                // CASE 1: Video is fully streaming
                 if (arSystem && video && video.readyState >= 2) {
                     console.log('[AR] ✅ AR.js initialized, video streaming');
                     resolve(arSystem);
                     return;
                 }
 
-                // CASE 2: Video loading, waited 2+ seconds
                 if (arSystem && video && video.readyState >= 1 && (Date.now() - startTime) > 2000) {
                     console.log('[AR] ✅ AR.js ready, video loading');
                     resolve(arSystem);
                     return;
                 }
 
-                // CASE 3: Video has width (means it's rendering)
                 if (arSystem && video && video.videoWidth > 0) {
                     console.log('[AR] ✅ AR.js ready, video has width: ' + video.videoWidth);
                     resolve(arSystem);
                     return;
                 }
 
-                // CASE 4: Emergency fallback
                 if (arSystem && video && (Date.now() - startTime) > 5000) {
                     console.log('[AR] ⚠️ AR.js system exists with video, assuming ready');
                     resolve(arSystem);
@@ -305,8 +367,8 @@
 
             await initializeARJS();
 
-            // 🔥 FORCE CANVAS ON TOP OF VIDEO
-            forceCanvasOnTop();
+            // 🔥 Force layers ONCE after AR starts
+            setTimeout(forceFullscreenLayers, 500);
 
             setupMarkerEvents();
             setupModelEvents();
@@ -350,6 +412,12 @@
             console.log('[AR] 📱 Page hidden');
         } else {
             console.log('[AR] 📱 Page visible');
+            if (isARStarted) {
+                // Re-apply layers when coming back, but only if not already fixed
+                if (!layersFixed) {
+                    setTimeout(forceFullscreenLayers, 100);
+                }
+            }
         }
     });
 
@@ -357,97 +425,37 @@
     // 🔍 CONSOLE DEBUGGING TOOLKIT
     // ==========================================
     window.ARDebug = {
-        // 1. Check all critical elements
         elements: function() {
             console.group('🔍 AR Elements Status');
             const checks = {
                 'Scene': document.getElementById('ar-scene'),
                 'Marker': document.getElementById('ar-marker'),
                 'Model Entity': document.getElementById('model-entity'),
-                'Camera': document.querySelector('a-entity[camera]'),
                 'Video': document.querySelector('video'),
                 'Canvas': document.querySelector('canvas'),
             };
             for (const [name, el] of Object.entries(checks)) {
                 console.log(`${name}: ${el ? '✅ EXISTS' : '❌ MISSING'}`);
-                if (el && el.tagName === 'VIDEO') {
-                    console.log(`  - readyState: ${el.readyState} (4 = streaming)`);
-                    console.log(`  - paused: ${el.paused}`);
-                    console.log(`  - width: ${el.videoWidth}`);
-                    console.log(`  - srcObject: ${el.srcObject ? '✅ SET' : '❌ NOT SET'}`);
-                    console.log(`  - z-index: ${el.style.zIndex || getComputedStyle(el).zIndex}`);
-                }
-                if (el && el.tagName === 'CANVAS') {
-                    console.log(`  - width: ${el.width}, height: ${el.height}`);
-                    console.log(`  - z-index: ${el.style.zIndex || getComputedStyle(el).zIndex}`);
-                }
             }
             console.groupEnd();
         },
-
-        // 2. Check AR.js system
-        arSystem: function() {
-            console.group('🔍 AR.js System');
-            const arSystem = scene?.systems?.['arjs'];
-            if (arSystem) {
-                console.log('✅ AR System: EXISTS');
-                console.log('  - tracking:', arSystem.trackingMethod || 'unknown');
-                console.log('  - detectionMode:', arSystem.detectionMode || 'unknown');
-            } else {
-                console.log('❌ AR System: NOT FOUND');
-            }
-            console.groupEnd();
-        },
-
-        // 3. Check model status
-        model: function() {
-            console.group('🔍 Model Status');
-            const model = document.getElementById('model-entity');
-            if (model) {
-                console.log('✅ Model entity: EXISTS');
-                console.log('  - loaded:', model.hasLoaded ? '✅ YES' : '⏳ NO');
-                console.log('  - scale:', model.getAttribute('scale'));
-                console.log('  - position:', model.getAttribute('position'));
-                console.log('  - visible:', model.getAttribute('visible'));
-                console.log('  - material:', model.getAttribute('material') || 'None (using GLTF)');
-                console.log('  - z-index:', getComputedStyle(model).zIndex);
-            } else {
-                console.log('❌ Model entity: NOT FOUND');
-            }
-            console.groupEnd();
-        },
-
-        // 4. Check z-index layering
         layers: function() {
-            console.group('🔍 Z-Index Layering');
             const video = document.querySelector('video');
             const canvas = document.querySelector('canvas');
-            const scene = document.querySelector('a-scene');
-            
-            if (video) {
-                console.log('Video z-index:', getComputedStyle(video).zIndex || video.style.zIndex || 'default');
-            }
-            if (canvas) {
-                console.log('Canvas z-index:', getComputedStyle(canvas).zIndex || canvas.style.zIndex || 'default');
-            }
-            if (scene) {
-                console.log('Scene z-index:', getComputedStyle(scene).zIndex || scene.style.zIndex || 'default');
-            }
-            console.groupEnd();
+            console.log('Video z-index:', video?.style.zIndex);
+            console.log('Canvas z-index:', canvas?.style.zIndex);
+            console.log('Video size:', video?.style.width, video?.style.height);
+            console.log('Canvas size:', canvas?.style.width, canvas?.style.height);
+            console.log('Video left:', video?.style.left);
+            console.log('Video top:', video?.style.top);
         },
-
-        // 5. Force canvas to top (manual fix)
-        forceCanvasTop: function() {
-            forceCanvasOnTop();
-            console.log('✅ Canvas forced to top');
+        forceLayers: function() {
+            layersFixed = false;
+            forceFullscreenLayers();
         },
-
-        // 6. Run all checks
         all: function() {
             console.log('🔍 ===== AR DEBUG ALL =====');
             this.elements();
-            this.arSystem();
-            this.model();
             this.layers();
             console.log('🔍 ===== END =====');
         }
@@ -463,12 +471,7 @@
         markerPrompt.classList.add('hidden');
 
         console.log('[AR] 🚀 App initialized');
-        console.log('[AR] 📌 Marker: Hiro');
-        console.log('[AR] 📐 Model: model.glb');
-        console.log('[AR] 🔍 Check console for debug logs');
-        console.log('[AR] 💡 Click "Start AR" to begin');
-        console.log('[AR] 🔧 Run ARDebug.all() in console for full diagnostics');
-        console.log('[AR] 🎨 Materials: Keeping original GLTF textures');
+        console.log('[AR] 🔧 Run ARDebug.all() in console for diagnostics');
     }
 
     init();

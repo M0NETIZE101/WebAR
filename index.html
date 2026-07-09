@@ -5,12 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AR Experience</title>
 
-    <!-- A-Frame -->
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <!-- AR.js -->
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
 
-    <!-- CSS -->
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
@@ -46,34 +43,13 @@
         shadow="enabled: false;"
     >
 
-        <!-- ==========================================
-             🔥 LIGHTING — MULTI-ANGLE, NO SHADOWS
-             ========================================== -->
-
-        <!-- Ambient light — soft fill -->
+        <!-- 🔥 LIGHTING — NO SHADOWS -->
         <a-entity light="type: ambient; intensity: 0.7; color: #ffffff;"></a-entity>
-
-        <!-- Light from front-right (main) -->
         <a-entity light="type: directional; intensity: 1.2; color: #ffffff;" position="2 3 2"></a-entity>
-
-        <!-- Light from front-left (fill) -->
         <a-entity light="type: directional; intensity: 1.0; color: #ffffff;" position="-2 2 -1"></a-entity>
-
-        <!-- Light from back (rim) -->
         <a-entity light="type: directional; intensity: 0.8; color: #ffffff;" position="0 -1 2"></a-entity>
-
-        <!-- Light from back-right -->
         <a-entity light="type: directional; intensity: 0.6; color: #ffffff;" position="2 -1 -2"></a-entity>
-
-        <!-- Light from back-left -->
         <a-entity light="type: directional; intensity: 0.6; color: #ffffff;" position="-2 -1 2"></a-entity>
-
-        <!-- Hemispherical light — sky/ground bounce -->
-        <a-entity light="type: hemispherical; intensity: 0.5; color: #ffffff; groundColor: #888888;"></a-entity>
-
-        <!-- ==========================================
-             MARKER & MODEL — KEEP ORIGINAL TEXTURES
-             ========================================== -->
 
         <a-marker 
             id="ar-marker" 
@@ -83,8 +59,8 @@
             smoothCount="5"
         >
 
-            <!-- 🔥 CAR MODEL — NO MATERIAL OVERRIDE, KEEP TEXTURES -->
-            <a-entity
+            <!-- 🔥 CAR MODEL — LOWER POSITION -->
+                  <a-entity
                 id="model-entity"
                 gltf-model="url(model.glb)"
                 scale="0.5 0.5 0.5"
@@ -93,9 +69,10 @@
                 animation="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear"
             ></a-entity>
 
-            <!-- Shadow disc (very subtle) -->
+
+            <!-- Shadow disc (grounding) -->
             <a-entity position="0 -0.02 0" rotation="-90 0 0">
-                <a-circle material="color: black; transparent: true; opacity: 0.08;" radius="0.5"></a-circle>
+                <a-circle material="color: black; transparent: true; opacity: 0.15;" radius="0.4"></a-circle>
             </a-entity>
 
         </a-marker>

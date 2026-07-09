@@ -2,218 +2,269 @@
    RESET & FULLSCREEN
    ========================================== */
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
 }
 
 html, body {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: #000;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    position: fixed;
-    top: 0;
-    left: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+    background: #000 !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 /* ==========================================
-   🔥 CRITICAL: FULLSCREEN LAYERING
+   🔥 NUCLEAR: FORCE EVERYTHING TO 0,0
    ========================================== */
 .a-enter-vr,
 .a-orientation-modal {
     display: none !important;
 }
 
-/* VIDEO — background layer (z-index: 0) */
-video {
+/* VIDEO — background layer */
+video,
+.a-scene video,
+video[src],
+video[srcObject] {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
+    min-width: 100vw !important;
+    min-height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
     object-fit: cover !important;
     z-index: 0 !important;
     pointer-events: none !important;
+    display: block !important;
+    background: #000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: translate(0, 0) !important;
+    transform-origin: 0 0 !important;
+    clip: none !important;
+    border: none !important;
+    border-radius: 0 !important;
 }
 
-/* A-FRAME SCENE — middle layer (z-index: 1) */
+/* CANVAS — on top of video */
+canvas,
+.a-scene canvas,
+canvas[data-aframe-canvas] {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    min-width: 100vw !important;
+    min-height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    z-index: 10 !important;
+    background: transparent !important;
+    pointer-events: auto !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: translate(0, 0) !important;
+    transform-origin: 0 0 !important;
+    clip: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+}
+
+/* A-FRAME SCENE */
 .a-scene {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
     z-index: 1 !important;
+    background: transparent !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
 }
 
-/* 🔥 3D CANVAS — on top of everything (z-index: 10) */
+/* Override any inline styles */
 .a-scene canvas {
+    z-index: 10 !important;
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    z-index: 10 !important;
-    background: transparent !important;
-    pointer-events: auto !important;
 }
 
 /* ==========================================
    PERMISSION OVERLAY
    ========================================== */
 #permission-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 100%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    padding: 32px 24px;
-    text-align: center;
-    transition: opacity 0.5s ease;
-    color: #fff;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 1000 !important;
+    background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 100%) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 20px !important;
+    padding: 32px 24px !important;
+    text-align: center !important;
+    transition: opacity 0.5s ease !important;
+    color: #fff !important;
+    margin: 0 !important;
 }
 
 #permission-overlay.hidden {
-    opacity: 0;
-    pointer-events: none;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 
 #permission-overlay .icon {
-    font-size: 64px;
+    font-size: 64px !important;
 }
 
 #permission-overlay h1 {
-    font-size: 28px;
-    font-weight: 700;
+    font-size: 28px !important;
+    font-weight: 700 !important;
 }
 
 #permission-overlay p {
-    font-size: 15px;
-    color: rgba(255, 255, 255, 0.6);
-    max-width: 320px;
-    line-height: 1.6;
+    font-size: 15px !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+    max-width: 320px !important;
+    line-height: 1.6 !important;
 }
 
 #permission-overlay button {
-    background: #6C5CE7;
-    color: #fff;
-    border: none;
-    padding: 16px 48px;
-    font-size: 18px;
-    font-weight: 600;
-    border-radius: 14px;
-    cursor: pointer;
-    min-width: 200px;
-    transition: opacity 0.2s;
+    background: #6C5CE7 !important;
+    color: #fff !important;
+    border: none !important;
+    padding: 16px 48px !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    border-radius: 14px !important;
+    cursor: pointer !important;
+    min-width: 200px !important;
+    transition: opacity 0.2s !important;
 }
 
 #permission-overlay button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
 }
 
 /* ==========================================
    ERROR SCREEN
    ========================================== */
 #error-screen {
-    position: fixed;
-    inset: 0;
-    z-index: 2000;
-    background: #0a0a1a;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 32px 24px;
-    text-align: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.5s ease;
-    color: #fff;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2000 !important;
+    background: #0a0a1a !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 16px !important;
+    padding: 32px 24px !important;
+    text-align: center !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.5s ease !important;
+    color: #fff !important;
+    margin: 0 !important;
 }
 
 #error-screen.visible {
-    opacity: 1;
-    pointer-events: all;
+    opacity: 1 !important;
+    pointer-events: all !important;
 }
 
 #error-screen .icon {
-    font-size: 56px;
+    font-size: 56px !important;
 }
 
 #error-screen h2 {
-    font-size: 22px;
-    color: #ff6b6b;
+    font-size: 22px !important;
+    color: #ff6b6b !important;
 }
 
 #error-screen p {
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.6);
-    max-width: 300px;
-    line-height: 1.6;
+    font-size: 14px !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+    max-width: 300px !important;
+    line-height: 1.6 !important;
 }
 
 #error-screen button {
-    background: transparent;
-    color: #fff;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    padding: 14px 40px;
-    font-size: 16px;
-    font-weight: 500;
-    border-radius: 12px;
-    cursor: pointer;
-    margin-top: 8px;
-    transition: border-color 0.2s;
+    background: transparent !important;
+    color: #fff !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    padding: 14px 40px !important;
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    border-radius: 12px !important;
+    cursor: pointer !important;
+    margin-top: 8px !important;
+    transition: border-color 0.2s !important;
 }
 
 #error-screen button:hover {
-    border-color: rgba(255, 255, 255, 0.5);
+    border-color: rgba(255, 255, 255, 0.5) !important;
 }
 
 /* ==========================================
    LOADING INDICATOR
    ========================================== */
 #loading {
-    position: fixed;
-    bottom: 40px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 100;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    color: #fff;
-    padding: 12px 28px;
-    border-radius: 40px;
-    font-size: 14px;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    transition: opacity 0.4s ease;
-    pointer-events: none;
+    position: fixed !important;
+    bottom: 40px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 100 !important;
+    background: rgba(0, 0, 0, 0.75) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    color: #fff !important;
+    padding: 12px 28px !important;
+    border-radius: 40px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+    transition: opacity 0.4s ease !important;
+    pointer-events: none !important;
 }
 
 #loading.hidden {
-    opacity: 0;
-    pointer-events: none;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 
 .spinner {
-    width: 22px;
-    height: 22px;
-    border: 3px solid rgba(255, 255, 255, 0.15);
-    border-top-color: #6C5CE7;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    flex-shrink: 0;
+    width: 22px !important;
+    height: 22px !important;
+    border: 3px solid rgba(255, 255, 255, 0.15) !important;
+    border-top-color: #6C5CE7 !important;
+    border-radius: 50% !important;
+    animation: spin 0.8s linear infinite !important;
+    flex-shrink: 0 !important;
 }
 
 @keyframes spin {
@@ -224,29 +275,29 @@ video {
    MARKER PROMPT
    ========================================== */
 #marker-prompt {
-    position: fixed;
-    bottom: 100px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 50;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    color: #fff;
-    padding: 10px 24px;
-    border-radius: 30px;
-    font-size: 14px;
-    font-weight: 500;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    transition: opacity 0.5s ease, transform 0.5s ease;
-    white-space: nowrap;
-    pointer-events: none;
+    position: fixed !important;
+    bottom: 100px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 50 !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    color: #fff !important;
+    padding: 10px 24px !important;
+    border-radius: 30px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    transition: opacity 0.5s ease, transform 0.5s ease !important;
+    white-space: nowrap !important;
+    pointer-events: none !important;
 }
 
 #marker-prompt.hidden {
-    opacity: 0;
-    transform: translateX(-50%) translateY(20px);
-    pointer-events: none;
+    opacity: 0 !important;
+    transform: translateX(-50%) translateY(20px) !important;
+    pointer-events: none !important;
 }
 
 /* ==========================================
@@ -254,24 +305,24 @@ video {
    ========================================== */
 @media (max-width: 480px) {
     #permission-overlay h1 {
-        font-size: 22px;
+        font-size: 22px !important;
     }
     #permission-overlay p {
-        font-size: 14px;
+        font-size: 14px !important;
     }
     #permission-overlay button {
-        padding: 14px 36px;
-        font-size: 16px;
-        min-width: 160px;
+        padding: 14px 36px !important;
+        font-size: 16px !important;
+        min-width: 160px !important;
     }
     #loading {
-        font-size: 12px;
-        padding: 10px 20px;
+        font-size: 12px !important;
+        padding: 10px 20px !important;
     }
     #marker-prompt {
-        font-size: 12px;
-        padding: 8px 18px;
-        bottom: 80px;
+        font-size: 12px !important;
+        padding: 8px 18px !important;
+        bottom: 80px !important;
     }
 }
 
