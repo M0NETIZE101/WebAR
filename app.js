@@ -73,13 +73,12 @@
     }
 
     // ==========================================
-    // REQUEST CAMERA PERMISSION (with delay fix)
+    // REQUEST CAMERA PERMISSION
     // ==========================================
     async function requestCameraPermission() {
         showLoading('Requesting camera access...');
 
         try {
-            // Step 1: Request camera to trigger permission prompt
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     facingMode: 'environment',
@@ -88,14 +87,10 @@
                 }
             });
 
-            // Step 2: Stop the manual stream immediately
             stream.getTracks().forEach(track => track.stop());
             console.log('[AR] Manual camera stream stopped');
 
-            // 🔥 Step 3: CRITICAL FIX - Give Android time to fully release
-            // the camera hardware before AR.js tries to acquire it again.
-            // Without this delay, Android may report "Camera in use" (NotReadableError)
-            // because the hardware hasn't finished releasing from the first call.
+            // Give Android time to fully release the camera hardware
             await new Promise(resolve => setTimeout(resolve, 500));
             console.log('[AR] Camera release delay complete');
 
@@ -169,10 +164,11 @@
                     return;
                 }
 
-                // SUCCESS CASE 4: AR system exists AND we've waited 5+ seconds
-                // (emergency fallback - maybe readyState never updates but video works)
-                if (arSystem && (Date.now() - startTime) > 5000) {
-                    console.log('[AR] AR.js system exists, assuming ready (video may be slow to report)');
+                // 🔥 FIXED: SUCCESS CASE 4 - emergency fallback after 5+ seconds
+                // Still requires video element to exist, just not full readiness
+                // This prevents resolving on a completely failed camera session
+                if (arSystem && video && (Date.now() - startTime) > 5000) {
+                    console.log('[AR] AR.js system exists with video, assuming ready (video may be slow to report)');
                     resolve(arSystem);
                     return;
                 }
@@ -337,6 +333,7 @@
         console.log('[AR]    - animation: Using A-Frame component (not <a-animation> tag)');
         console.log('[AR]    - AR.js detection: Multi-stage fallback for video readiness');
         console.log('[AR]    - Camera race condition: 500ms delay between manual stop and AR.js acquire');
+        console.log('[AR]    - Case 4 fallback: Now requires video element to exist');
     }
 
     init();
