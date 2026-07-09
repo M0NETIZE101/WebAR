@@ -5,304 +5,159 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>QR-Embedded AR Marker Experience</title>
 
-    <!-- A-Frame 1.4.0 (stable with AR.js) -->
+    <!-- A-Frame 1.4.0 -->
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     
-    <!-- 
-        ✅ FIXED: AR.js via jsDelivr GitHub mirror
-        NOTE: This uses the master branch (unversioned).
-        For a pinned version, we'd need to check available tags.
-    -->
+    <!-- ✅ FIXED: AR.js via GitHub mirror (master branch) -->
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
 
     <style>
         /* ===== RESET & FULLSCREEN ===== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         html, body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: #000;
+            width: 100%; height: 100%;
+            overflow: hidden; background: #000;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            position: fixed;
-            top: 0;
-            left: 0;
+            position: fixed; top: 0; left: 0;
         }
 
-        /* Hide A-Frame UI */
-        .a-enter-vr,
-        .a-orientation-modal {
-            display: none !important;
-        }
+        .a-enter-vr, .a-orientation-modal { display: none !important; }
 
-        /* Force fullscreen for all A-Frame elements */
-        .a-scene,
-        .a-scene canvas,
-        .a-scene video {
+        .a-scene, .a-scene canvas, .a-scene video {
             position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
+            top: 0 !important; left: 0 !important;
+            width: 100% !important; height: 100% !important;
             z-index: 1 !important;
         }
 
-        .a-scene canvas {
-            z-index: 2 !important;
-            background: transparent !important;
-        }
-
-        .a-scene video {
-            z-index: 0 !important;
-            object-fit: cover !important;
-        }
+        .a-scene canvas { z-index: 2 !important; background: transparent !important; }
+        .a-scene video { z-index: 0 !important; object-fit: cover !important; }
 
         /* ===== PERMISSION OVERLAY ===== */
         #permission-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 1000;
+            position: fixed; inset: 0; z-index: 1000;
             background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 100%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 24px;
-            padding: 32px 24px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 24px; padding: 32px 24px;
             transition: opacity 0.5s ease;
         }
 
-        #permission-overlay.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
+        #permission-overlay.hidden { opacity: 0; pointer-events: none; }
 
-        .permission-icon {
-            font-size: 72px;
-            line-height: 1;
-        }
-
-        .permission-title {
-            color: #fff;
-            font-size: 24px;
-            font-weight: 700;
-            text-align: center;
-        }
-
+        .permission-icon { font-size: 72px; line-height: 1; }
+        .permission-title { color: #fff; font-size: 24px; font-weight: 700; text-align: center; }
         .permission-description {
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 15px;
-            text-align: center;
-            max-width: 320px;
-            line-height: 1.6;
+            color: rgba(255,255,255,0.6); font-size: 15px;
+            text-align: center; max-width: 320px; line-height: 1.6;
         }
 
         #start-btn {
-            background: #6C5CE7;
-            color: #fff;
-            border: none;
-            padding: 16px 48px;
-            font-size: 18px;
-            font-weight: 600;
-            border-radius: 14px;
-            cursor: pointer;
+            background: #6C5CE7; color: #fff; border: none;
+            padding: 16px 48px; font-size: 18px; font-weight: 600;
+            border-radius: 14px; cursor: pointer;
             transition: opacity 0.2s, transform 0.2s;
-            -webkit-appearance: none;
-            appearance: none;
+            -webkit-appearance: none; appearance: none;
             min-width: 200px;
         }
 
-        #start-btn:hover {
-            transform: scale(1.02);
-        }
-
-        #start-btn:active {
-            opacity: 0.8;
-            transform: scale(0.98);
-        }
-
-        #start-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none !important;
-        }
+        #start-btn:hover { transform: scale(1.02); }
+        #start-btn:active { opacity: 0.8; transform: scale(0.98); }
+        #start-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
 
         /* ===== ERROR SCREEN ===== */
         #error-screen {
-            position: fixed;
-            inset: 0;
-            z-index: 2000;
+            position: fixed; inset: 0; z-index: 2000;
             background: #0a0a1a;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            padding: 32px 24px;
-            opacity: 0;
-            pointer-events: none;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 16px; padding: 32px 24px;
+            opacity: 0; pointer-events: none;
             transition: opacity 0.5s ease;
         }
 
-        #error-screen.visible {
-            opacity: 1;
-            pointer-events: all;
-        }
+        #error-screen.visible { opacity: 1; pointer-events: all; }
 
-        .error-icon {
-            font-size: 60px;
-        }
-
-        .error-title {
-            color: #ff6b6b;
-            font-size: 22px;
-            font-weight: 700;
-        }
-
+        .error-icon { font-size: 60px; }
+        .error-title { color: #ff6b6b; font-size: 22px; font-weight: 700; }
         .error-message {
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 14px;
-            text-align: center;
-            max-width: 300px;
-            line-height: 1.6;
-            white-space: pre-line;
+            color: rgba(255,255,255,0.6); font-size: 14px;
+            text-align: center; max-width: 300px; line-height: 1.6; white-space: pre-line;
         }
-
         .error-hint {
-            background: rgba(255, 255, 255, 0.06);
-            padding: 12px 20px;
-            border-radius: 10px;
-            color: rgba(255, 255, 255, 0.4);
-            font-size: 13px;
-            text-align: center;
-            max-width: 300px;
-            line-height: 1.5;
+            background: rgba(255,255,255,0.06); padding: 12px 20px;
+            border-radius: 10px; color: rgba(255,255,255,0.4);
+            font-size: 13px; text-align: center; max-width: 300px; line-height: 1.5;
             margin-top: 4px;
         }
 
         #reload-btn {
-            background: transparent;
-            color: #fff;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            padding: 14px 40px;
-            font-size: 16px;
-            font-weight: 500;
-            border-radius: 12px;
-            cursor: pointer;
+            background: transparent; color: #fff;
+            border: 2px solid rgba(255,255,255,0.2);
+            padding: 14px 40px; font-size: 16px; font-weight: 500;
+            border-radius: 12px; cursor: pointer;
             transition: border-color 0.2s;
-            -webkit-appearance: none;
-            appearance: none;
+            -webkit-appearance: none; appearance: none;
             margin-top: 8px;
         }
 
-        #reload-btn:hover {
-            border-color: rgba(255, 255, 255, 0.5);
-        }
+        #reload-btn:hover { border-color: rgba(255,255,255,0.5); }
 
         /* ===== LOADING INDICATOR ===== */
         #loading {
-            position: fixed;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
             z-index: 100;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(12px);
+            background: rgba(0,0,0,0.75); backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            color: #fff;
-            padding: 12px 28px;
-            border-radius: 40px;
-            font-size: 14px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-            transition: opacity 0.4s ease;
-            pointer-events: none;
+            color: #fff; padding: 12px 28px; border-radius: 40px;
+            font-size: 14px; font-weight: 500;
+            display: flex; align-items: center; gap: 14px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+            transition: opacity 0.4s ease; pointer-events: none;
         }
 
-        #loading.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
+        #loading.hidden { opacity: 0; pointer-events: none; }
 
         .loading-spinner {
-            width: 22px;
-            height: 22px;
-            border: 3px solid rgba(255, 255, 255, 0.15);
+            width: 22px; height: 22px;
+            border: 3px solid rgba(255,255,255,0.15);
             border-top-color: #6C5CE7;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             flex-shrink: 0;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ===== MARKER PROMPT ===== */
         #marker-prompt {
-            position: fixed;
-            bottom: 100px;
-            left: 50%;
-            transform: translateX(-50%);
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
             z-index: 50;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            color: #fff;
-            padding: 10px 24px;
-            border-radius: 30px;
-            font-size: 14px;
-            font-weight: 500;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #fff; padding: 10px 24px; border-radius: 30px;
+            font-size: 14px; font-weight: 500;
+            border: 1px solid rgba(255,255,255,0.08);
             transition: opacity 0.5s ease, transform 0.5s ease;
-            white-space: nowrap;
-            pointer-events: none;
+            white-space: nowrap; pointer-events: none;
         }
 
         #marker-prompt.hidden {
-            opacity: 0;
-            transform: translateX(-50%) translateY(20px);
+            opacity: 0; transform: translateX(-50%) translateY(20px);
             pointer-events: none;
         }
 
-        /* ===== RESPONSIVE ===== */
         @media (max-width: 480px) {
-            .permission-title {
-                font-size: 20px;
-            }
-            .permission-description {
-                font-size: 14px;
-            }
-            #start-btn {
-                padding: 14px 36px;
-                font-size: 16px;
-                min-width: 160px;
-            }
-            #loading {
-                font-size: 12px;
-                padding: 10px 20px;
-            }
-            #marker-prompt {
-                font-size: 12px;
-                padding: 8px 18px;
-                bottom: 80px;
-            }
+            .permission-title { font-size: 20px; }
+            .permission-description { font-size: 14px; }
+            #start-btn { padding: 14px 36px; font-size: 16px; min-width: 160px; }
+            #loading { font-size: 12px; padding: 10px 20px; }
+            #marker-prompt { font-size: 12px; padding: 8px 18px; bottom: 80px; }
         }
 
-        /* Reduced motion */
         @media (prefers-reduced-motion: reduce) {
-            * {
-                animation-duration: 0.01ms !important;
-                transition-duration: 0.01ms !important;
-            }
+            * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
         }
     </style>
 </head>
@@ -322,12 +177,8 @@
     <div id="error-screen">
         <div class="error-icon">⚠️</div>
         <h2 class="error-title">Camera Access Required</h2>
-        <p class="error-message" id="error-message">
-            Camera permission was denied.
-        </p>
-        <div class="error-hint">
-            🔧 To fix: Enable camera in browser settings, then reload.
-        </div>
+        <p class="error-message" id="error-message">Camera permission was denied.</p>
+        <div class="error-hint">🔧 To fix: Enable camera in browser settings, then reload.</div>
         <button id="reload-btn">🔄 Reload</button>
     </div>
 
@@ -341,11 +192,6 @@
     <div id="marker-prompt" class="hidden">📍 Point your camera at the marker</div>
 
     <!-- ===== A-FRAME SCENE ===== -->
-    <!--
-        IMPORTANT: The arjs attribute is NOT set here.
-        It will be added via JavaScript after camera permission is granted.
-        This prevents automatic camera access before the user clicks "Start AR".
-    -->
     <a-scene
         id="ar-scene"
         embedded
@@ -355,37 +201,16 @@
     >
         <!--
             BARCODE MARKER CONFIGURATION
-
-            This uses AR.js's barcode marker type (not the default Hiro pattern).
-            The physical marker is a QR code with this barcode pattern embedded
-            as its center logo. The QR code is generated separately (not part of
-            this codebase).
-
-            To use:
-            1. Generate a barcode marker pattern using AR.js marker generator
-            2. Embed it as the center logo of a QR code
-            3. Replace the value below with your marker ID
-            4. The app will detect the barcode marker via camera once the page loads
-
-            📌 QUIRK: AR.js barcode markers are case-sensitive.
-                   Use numeric values only (e.g., 0, 1, 2, 3...)
-                   as per AR.js documentation.
+            Marker ID: 0 (change value="X" in index.html)
+            Physical marker: QR code with embedded barcode pattern
+            Generated separately - not part of this codebase
         -->
-        <a-marker
-            id="ar-marker"
-            type="barcode"
-            value="0"
-            emitevents="true"
-        >
+        <a-marker id="ar-marker" type="barcode" value="0" emitevents="true">
             <!--
                 Model configuration:
-                - Place your model.glb in the same folder as index.html
-                - scale="0.15 0.15 0.15" is a starting guess.
-                  Sketchfab models vary wildly in native unit scale —
-                  adjust this after testing with your actual model.
-                - Using animation COMPONENT (not <a-animation> tag)
-                  animation="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear"
-                - No animation-mixer needed (no baked animations in this model)
+                - Place your model.glb in the same folder
+                - scale="0.15 0.15 0.15" is a starting guess
+                - animation: A-Frame component for continuous rotation
             -->
             <a-entity
                 id="model-entity"
@@ -401,54 +226,5 @@
     </a-scene>
 
     <script src="app.js"></script>
-
-    <!--
-        ==========================================
-        DEBUG SCRIPT - REMOVE AFTER FIXING
-        ==========================================
-        This helps diagnose why the camera might not be starting.
-        Shows real-time status of AR system, video element, and readyState.
-    -->
-    <script>
-        (function() {
-            const panel = document.createElement('div');
-            panel.style.cssText = 'position:fixed;top:0;left:0;right:0;background:rgba(0,0,0,0.9);color:#0f0;font-family:monospace;font-size:11px;padding:8px;z-index:99999;max-height:40vh;overflow-y:auto;white-space:pre-wrap;';
-            document.body.appendChild(panel);
-
-            window.onerror = function(msg, src, line) {
-                panel.textContent += '\n[ERROR] ' + msg + ' (line ' + line + ')';
-            };
-
-            setInterval(() => {
-                const video = document.querySelector('video');
-                const canvas = document.querySelector('canvas');
-                const scene = document.getElementById('ar-scene');
-                const arSystem = scene && scene.systems && scene.systems['arjs'];
-                const model = document.getElementById('model-entity');
-
-                panel.textContent =
-                    '[DEBUG ' + new Date().toLocaleTimeString() + ']\n' +
-                    'arSystem: ' + (arSystem ? 'EXISTS' : 'MISSING') + '\n' +
-                    'video element: ' + (video ? 'EXISTS' : 'MISSING') + '\n' +
-                    'video.readyState: ' + (video ? video.readyState : 'N/A') + '\n' +
-                    'video.srcObject: ' + (video && video.srcObject ? 'SET' : 'NOT SET') + '\n' +
-                    'video.paused: ' + (video ? video.paused : 'N/A') + '\n' +
-                    'video.videoWidth: ' + (video ? video.videoWidth : 'N/A') + '\n' +
-                    'canvas: ' + (canvas ? 'EXISTS' : 'MISSING') + '\n' +
-                    'model loaded: ' + (model && model.hasLoaded ? 'YES' : 'NO') + '\n' +
-                    'arjs attribute: ' + (scene && scene.hasAttribute('arjs') ? 'SET' : 'NOT SET') + '\n' +
-                    'permission overlay: ' + (document.getElementById('permission-overlay').classList.contains('hidden') ? 'HIDDEN' : 'VISIBLE') + '\n' +
-                    'loading: ' + (document.getElementById('loading').classList.contains('hidden') ? 'HIDDEN' : 'VISIBLE') + '\n' +
-                    'marker prompt: ' + (document.getElementById('marker-prompt').classList.contains('hidden') ? 'HIDDEN' : 'VISIBLE');
-                    
-                // Append any errors that were captured
-                if (panel.textContent.includes('[ERROR]')) {
-                    panel.textContent += '\n--- CAPTURED ERRORS ---\n' + 
-                        panel.textContent.split('[ERROR]').slice(1).map(e => '[ERROR]' + e).join('');
-                }
-            }, 500);
-        })();
-    </script>
-
 </body>
 </html>

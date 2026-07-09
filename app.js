@@ -90,7 +90,7 @@
             stream.getTracks().forEach(track => track.stop());
             console.log('[AR] Manual camera stream stopped');
 
-            // Give Android time to fully release the camera hardware
+            // 🔥 CRITICAL: Give Android time to fully release the camera hardware
             await new Promise(resolve => setTimeout(resolve, 500));
             console.log('[AR] Camera release delay complete');
 
@@ -134,7 +134,6 @@
                 const arSystem = scene.systems && scene.systems['arjs'];
                 const video = document.querySelector('video');
                 
-                // Log state changes for debugging
                 if (video && video.readyState !== lastReadyState) {
                     lastReadyState = video.readyState;
                     console.log('[AR] Video readyState:', video.readyState, 
@@ -142,38 +141,34 @@
                         'width:', video.videoWidth);
                 }
 
-                // SUCCESS CASE 1: AR system exists AND video is streaming
+                // CASE 1: Video is fully streaming
                 if (arSystem && video && video.readyState >= 2) {
-                    console.log('[AR] AR.js initialized, video streaming (readyState: ' + video.readyState + ')');
+                    console.log('[AR] AR.js initialized, video streaming');
                     resolve(arSystem);
                     return;
                 }
 
-                // SUCCESS CASE 2: AR system exists AND video is at least metadata loaded,
-                // and we've waited 2+ seconds (video might be slow to start on some devices)
+                // CASE 2: Video loading, waited 2+ seconds
                 if (arSystem && video && video.readyState >= 1 && (Date.now() - startTime) > 2000) {
-                    console.log('[AR] AR.js ready, video loading (readyState: ' + video.readyState + ')');
+                    console.log('[AR] AR.js ready, video loading');
                     resolve(arSystem);
                     return;
                 }
 
-                // SUCCESS CASE 3: AR system exists AND video has width (means it's rendering)
+                // CASE 3: Video has width (means it's rendering)
                 if (arSystem && video && video.videoWidth > 0) {
                     console.log('[AR] AR.js ready, video has width: ' + video.videoWidth);
                     resolve(arSystem);
                     return;
                 }
 
-                // 🔥 FIXED: SUCCESS CASE 4 - emergency fallback after 5+ seconds
-                // Still requires video element to exist, just not full readiness
-                // This prevents resolving on a completely failed camera session
+                // 🔥 CASE 4: Emergency fallback - requires video element to exist
                 if (arSystem && video && (Date.now() - startTime) > 5000) {
-                    console.log('[AR] AR.js system exists with video, assuming ready (video may be slow to report)');
+                    console.log('[AR] AR.js system exists with video, assuming ready');
                     resolve(arSystem);
                     return;
                 }
 
-                // Timeout
                 if (Date.now() - startTime > timeout) {
                     const videoState = video ? 'readyState: ' + video.readyState + ', width: ' + video.videoWidth : 'NO VIDEO';
                     console.error('[AR] Timeout - video state:', videoState);
@@ -181,7 +176,6 @@
                     return;
                 }
 
-                // Keep checking
                 setTimeout(checkARSystem, 100);
             }
 
@@ -318,22 +312,13 @@
         markerPrompt.classList.add('hidden');
 
         console.log('[AR] App initialized');
-        console.log('[AR] 📌 BARCODE MARKER CONFIG:');
-        console.log('[AR]    Marker ID: 0 (change value="X" in index.html)');
-        console.log('[AR]    Physical marker: QR code with embedded barcode pattern');
-        console.log('[AR]    Generated separately - not part of this codebase');
-        console.log('[AR] 🔧 QUIRKS:');
-        console.log('[AR]    - Android Chrome: Works best with 3x3 matrix codes');
-        console.log('[AR]    - iOS Safari: Requires iOS 15+, may need user gesture to start video');
-        console.log('[AR]    - Camera: Always use environment-facing (rear) camera for markers');
-        console.log('[AR] 📐 SCALE NOTE:');
-        console.log('[AR]    Current scale: 0.15 0.15 0.15 (adjust based on your model)');
-        console.log('[AR]    Sketchfab models vary in native unit scale — test and tweak!');
-        console.log('[AR] 🔥 FIXES APPLIED:');
-        console.log('[AR]    - animation: Using A-Frame component (not <a-animation> tag)');
-        console.log('[AR]    - AR.js detection: Multi-stage fallback for video readiness');
-        console.log('[AR]    - Camera race condition: 500ms delay between manual stop and AR.js acquire');
-        console.log('[AR]    - Case 4 fallback: Now requires video element to exist');
+        console.log('[AR] ✅ All fixes applied:');
+        console.log('[AR]    - CDN: GitHub mirror (working)');
+        console.log('[AR]    - arjs config: Added via JS after permission');
+        console.log('[AR]    - Camera: 500ms delay to avoid race condition');
+        console.log('[AR]    - Case 4: Now requires video element');
+        console.log('[AR]    - animation: A-Frame component (not <a-animation> tag)');
+        console.log('[AR] 📌 Marker ID: 0 (change value="X" in index.html)');
     }
 
     init();
