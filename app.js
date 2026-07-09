@@ -49,7 +49,7 @@
     }
 
     // ==========================================
-    // 🔥 FORCE CANVAS ON TOP OF VIDEO
+    // FORCE CANVAS ON TOP OF VIDEO
     // ==========================================
     function forceCanvasOnTop() {
         const canvas = document.querySelector('canvas');
@@ -83,7 +83,6 @@
             console.log('[AR] ✅ Video z-index forced to 0');
         }
 
-        // Also force the scene container
         const sceneEl = document.querySelector('a-scene');
         if (sceneEl) {
             sceneEl.style.setProperty('z-index', '1', 'important');
@@ -410,6 +409,7 @@
                 console.log('  - scale:', model.getAttribute('scale'));
                 console.log('  - position:', model.getAttribute('position'));
                 console.log('  - visible:', model.getAttribute('visible'));
+                console.log('  - material:', model.getAttribute('material') || 'None (using GLTF)');
                 console.log('  - z-index:', getComputedStyle(model).zIndex);
             } else {
                 console.log('❌ Model entity: NOT FOUND');
@@ -468,6 +468,7 @@
         console.log('[AR] 🔍 Check console for debug logs');
         console.log('[AR] 💡 Click "Start AR" to begin');
         console.log('[AR] 🔧 Run ARDebug.all() in console for full diagnostics');
+        console.log('[AR] 🎨 Materials: Keeping original GLTF textures');
     }
 
     init();
