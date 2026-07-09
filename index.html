@@ -385,7 +385,7 @@
                 - scale="0.15 0.15 0.15" is a starting guess.
                   Sketchfab models vary wildly in native unit scale —
                   adjust this after testing with your actual model.
-                - 🔥 FIXED: Using animation COMPONENT (not <a-animation> tag)
+                - Using animation COMPONENT (not <a-animation> tag)
                   animation="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear"
                 - No animation-mixer needed (no baked animations in this model)
             -->
@@ -403,5 +403,54 @@
     </a-scene>
 
     <script src="app.js"></script>
+
+    <!--
+        ==========================================
+        DEBUG SCRIPT - REMOVE AFTER FIXING
+        ==========================================
+        This helps diagnose why the camera might not be starting.
+        Shows real-time status of AR system, video element, and readyState.
+    -->
+    <script>
+        (function() {
+            const panel = document.createElement('div');
+            panel.style.cssText = 'position:fixed;top:0;left:0;right:0;background:rgba(0,0,0,0.9);color:#0f0;font-family:monospace;font-size:11px;padding:8px;z-index:99999;max-height:40vh;overflow-y:auto;white-space:pre-wrap;';
+            document.body.appendChild(panel);
+
+            window.onerror = function(msg, src, line) {
+                panel.textContent += '\n[ERROR] ' + msg + ' (line ' + line + ')';
+            };
+
+            setInterval(() => {
+                const video = document.querySelector('video');
+                const canvas = document.querySelector('canvas');
+                const scene = document.getElementById('ar-scene');
+                const arSystem = scene && scene.systems && scene.systems['arjs'];
+                const model = document.getElementById('model-entity');
+
+                panel.textContent =
+                    '[DEBUG ' + new Date().toLocaleTimeString() + ']\n' +
+                    'arSystem: ' + (arSystem ? 'EXISTS' : 'MISSING') + '\n' +
+                    'video element: ' + (video ? 'EXISTS' : 'MISSING') + '\n' +
+                    'video.readyState: ' + (video ? video.readyState : 'N/A') + '\n' +
+                    'video.srcObject: ' + (video && video.srcObject ? 'SET' : 'NOT SET') + '\n' +
+                    'video.paused: ' + (video ? video.paused : 'N/A') + '\n' +
+                    'video.videoWidth: ' + (video ? video.videoWidth : 'N/A') + '\n' +
+                    'canvas: ' + (canvas ? 'EXISTS' : 'MISSING') + '\n' +
+                    'model loaded: ' + (model && model.hasLoaded ? 'YES' : 'NO') + '\n' +
+                    'arjs attribute: ' + (scene && scene.hasAttribute('arjs') ? 'SET' : 'NOT SET') + '\n' +
+                    'permission overlay: ' + (document.getElementById('permission-overlay').classList.contains('hidden') ? 'HIDDEN' : 'VISIBLE') + '\n' +
+                    'loading: ' + (document.getElementById('loading').classList.contains('hidden') ? 'HIDDEN' : 'VISIBLE') + '\n' +
+                    'marker prompt: ' + (document.getElementById('marker-prompt').classList.contains('hidden') ? 'HIDDEN' : 'VISIBLE');
+                    
+                // Append any errors that were captured
+                if (panel.textContent.includes('[ERROR]')) {
+                    panel.textContent += '\n--- CAPTURED ERRORS ---\n' + 
+                        panel.textContent.split('[ERROR]').slice(1).map(e => '[ERROR]' + e).join('');
+                }
+            }, 500);
+        })();
+    </script>
+
 </body>
 </html>
