@@ -20,23 +20,6 @@
     let isARStarted = false;
     let markerDetected = false;
     let modelLoaded = false;
-    let videoElement = null;
-    let videoStream = null;
-
-    // ==========================================
-    // MOBILE DETECTION
-    // ==========================================
-    function isMobile() {
-        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    }
-
-    function isAndroid() {
-        return /Android/i.test(navigator.userAgent);
-    }
-
-    function isIOS() {
-        return /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    }
 
     // ==========================================
     // UI HELPERS
@@ -89,52 +72,26 @@
     }
 
     // ==========================================
-    // REQUEST CAMERA PERMISSION (Mobile Fix)
+    // REQUEST CAMERA PERMISSION
     // ==========================================
     async function requestCameraPermission() {
         showLoading('Requesting camera access...');
 
         try {
-            // 🔥 Mobile fix: Use simpler constraints that work on all devices
-            const constraints = {
+            const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     facingMode: 'environment',
-                    width: { ideal: 640 },  // 🔥 Lower resolution for mobile
+                    width: { ideal: 640 },
                     height: { ideal: 480 }
                 }
-            };
+            });
 
-            // 🔥 iOS needs specific handling
-            if (isIOS()) {
-                // iOS Safari requires these exact settings
-                constraints.video = {
-                    facingMode: 'environment',
-                    width: { ideal: 640 },
-                    height: { ideal: 480 },
-                    frameRate: { ideal: 30 }
-                };
-            }
+            stream.getTracks().forEach(track => track.stop());
+            console.log('[AR] Manual camera stream stopped');
 
-            // 🔥 Create video element with mobile-friendly attributes
-            videoElement = document.createElement('video');
-            videoElement.id = 'ar-video';
-            videoElement.setAttribute('autoplay', '');
-            videoElement.setAttribute('playsinline', '');  // 🔥 Required for iOS
-            videoElement.setAttribute('muted', '');        // 🔥 Required for autoplay
-            videoElement.setAttribute('webkit-playsinline', ''); // 🔥 iOS 14+
-            videoElement.style.display = 'none';
-            document.body.appendChild(videoElement);
-
-            // Get the camera stream
-            videoStream = await navigator.mediaDevices.getUserMedia(constraints);
-            
-            // Attach to our video element
-            videoElement.srcObject = videoStream;
-            
-            // 🔥 Mobile fix: Ensure video plays (user gesture already happened)
-            await videoElement.play();
-            
-            console.log('[AR] Manual video stream started (mobile: ' + (isMobile() ? 'yes' : 'no') + ')');
+            // 🔥 CRITICAL: 500ms delay to avoid NotReadableError on Android
+            await new Promise(resolve => setTimeout(resolve, 500));
+            console.log('[AR] Camera release delay complete');
 
             return true;
 
@@ -154,75 +111,66 @@
     }
 
     // ==========================================
-    // INITIALIZE AR.JS (Mobile Optimized)
+    // INITIALIZE AR.JS
     // ==========================================
     function initializeARJS() {
         return new Promise((resolve, reject) => {
             showLoading('Initializing AR engine...');
 
-            // 🔥 Mobile fix: Add mobile-specific arjs settings
-            const arjsConfig = [
+            scene.setAttribute('arjs', [
                 'sourceType: webcam',
-                'video: #ar-video',
                 'debugUIEnabled: false',
                 'detectionMode: mono_and_matrix',
                 'matrixCodeType: 3x3',
-                'trackingMethod: best',
-                'performance: fast',           // 🔥 Mobile optimization
-                'maxDetectionRate: 30',        // 🔥 Reduce CPU usage
-                'canvasWidth: 640',            // 🔥 Lower resolution for mobile
-                'canvasHeight: 480'
-            ].join('; ');
-
-            scene.setAttribute('arjs', arjsConfig);
+                'trackingMethod: best'
+            ].join('; '));
 
             const startTime = Date.now();
-            const timeout = 20000;  // 🔥 Longer timeout for mobile
+            const timeout = 15000;
+            let lastReadyState = -1;
 
             function checkARSystem() {
                 const arSystem = scene.systems && scene.systems['arjs'];
-                
-                // 🔥 Check if our video is still playing
-                if (videoElement) {
-                    console.log('[AR] Video - readyState:', videoElement.readyState, 
-                        'paused:', videoElement.paused, 
-                        'width:', videoElement.videoWidth);
-                    
-                    // 🔥 Mobile fix: Try to resume if paused
-                    if (videoElement.paused && videoElement.srcObject) {
-                        console.warn('[AR] Video paused - attempting resume...');
-                        videoElement.play().catch(e => console.warn('[AR] Resume failed:', e));
-                    }
+                const video = document.querySelector('video');
+
+                if (video && video.readyState !== lastReadyState) {
+                    lastReadyState = video.readyState;
+                    console.log('[AR] Video readyState:', video.readyState,
+                        'paused:', video.paused,
+                        'width:', video.videoWidth);
                 }
 
-                if (arSystem && videoElement && videoElement.readyState >= 2) {
+                // CASE 1: Video is fully streaming
+                if (arSystem && video && video.readyState >= 2) {
                     console.log('[AR] AR.js initialized, video streaming');
                     resolve(arSystem);
                     return;
                 }
 
-                if (arSystem && videoElement && videoElement.readyState >= 1 && (Date.now() - startTime) > 2000) {
+                // CASE 2: Video loading, waited 2+ seconds
+                if (arSystem && video && video.readyState >= 1 && (Date.now() - startTime) > 2000) {
                     console.log('[AR] AR.js ready, video loading');
                     resolve(arSystem);
                     return;
                 }
 
-                if (arSystem && videoElement && videoElement.videoWidth > 0) {
-                    console.log('[AR] AR.js ready, video has width: ' + videoElement.videoWidth);
+                // CASE 3: Video has width (means it's rendering)
+                if (arSystem && video && video.videoWidth > 0) {
+                    console.log('[AR] AR.js ready, video has width: ' + video.videoWidth);
                     resolve(arSystem);
                     return;
                 }
 
-                if (arSystem && videoElement && (Date.now() - startTime) > 5000) {
-                    console.log('[AR] AR.js system exists, assuming ready');
+                // CASE 4: Emergency fallback — requires video element to exist
+                if (arSystem && video && (Date.now() - startTime) > 5000) {
+                    console.log('[AR] AR.js system exists with video, assuming ready');
                     resolve(arSystem);
                     return;
                 }
 
                 if (Date.now() - startTime > timeout) {
-                    const videoState = videoElement ? 
-                        'readyState: ' + videoElement.readyState + ', width: ' + videoElement.videoWidth : 
-                        'NO VIDEO';
+                    const videoState = video ? 'readyState: ' + video.readyState + ', width: ' + video.videoWidth : 'NO VIDEO';
+                    console.error('[AR] Timeout - video state:', videoState);
                     reject(new Error('AR initialization timed out.\n\nVideo state: ' + videoState));
                     return;
                 }
@@ -238,25 +186,23 @@
     // SETUP MARKER EVENTS
     // ==========================================
     function setupMarkerEvents() {
-        const markerEl = document.getElementById('ar-marker');
-        if (!markerEl) {
+        const marker = document.getElementById('ar-marker');
+        if (!marker) {
             console.warn('[AR] Marker element not found');
             return;
         }
 
-        markerEl.addEventListener('markerFound', () => {
+        marker.addEventListener('markerFound', () => {
             console.log('[AR] Marker FOUND');
             markerDetected = true;
             hideMarkerPrompt();
             hideLoading();
         });
 
-        markerEl.addEventListener('markerLost', () => {
+        marker.addEventListener('markerLost', () => {
             console.log('[AR] Marker LOST');
             markerDetected = false;
-            if (!modelLoaded) {
-                showMarkerPrompt();
-            }
+            if (!modelLoaded) { showMarkerPrompt(); }
         });
 
         console.log('[AR] Marker events configured');
@@ -323,7 +269,7 @@
             }, 5000);
 
             isARStarted = true;
-            console.log('[AR] AR experience ready (mobile: ' + (isMobile() ? 'yes' : 'no') + ')');
+            console.log('[AR] AR experience ready');
 
         } catch (err) {
             console.error('[AR] Start error:', err);
@@ -336,14 +282,8 @@
     // ==========================================
     // EVENT LISTENERS
     // ==========================================
-    startBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        startAR();
-    });
-
-    reloadBtn.addEventListener('click', () => {
-        window.location.reload();
-    });
+    startBtn.addEventListener('click', (e) => { e.preventDefault(); startAR(); });
+    reloadBtn.addEventListener('click', () => { window.location.reload(); });
 
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
@@ -362,9 +302,9 @@
         loading.classList.add('hidden');
         markerPrompt.classList.add('hidden');
 
-        console.log('[AR] App initialized - Mobile optimized');
-        console.log('[AR] Device:', isMobile() ? (isAndroid() ? 'Android' : isIOS() ? 'iOS' : 'Desktop') : 'Desktop');
-        console.log('[AR] 📌 Marker ID: 0 (3x3 barcode)');
+        console.log('[AR] App initialized');
+        console.log('[AR] 📌 Marker: Hiro (for testing)');
+        console.log('[AR] 📐 Model: mode.glb');
     }
 
     init();
