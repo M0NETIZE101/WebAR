@@ -2,211 +2,55 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>AR Experience</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR - Your Model</title>
 
-    <!-- A-Frame 1.4.0 -->
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    
-    <!-- AR.js via GitHub mirror -->
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
 
-    <!-- 🔥 NO ENVIRONMENT COMPONENT — it hides the camera! -->
-
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body {
-            width: 100%; height: 100%;
-            overflow: hidden; background: #000;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            position: fixed; top: 0; left: 0;
+        body { margin: 0; overflow: hidden; }
+        .a-enter-vr { display: none; }
+        #startOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); color: white; z-index: 999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-family: sans-serif; cursor: pointer;
         }
-        .a-enter-vr, .a-orientation-modal { display: none !important; }
-        .a-scene, .a-scene canvas, .a-scene video {
-            position: fixed !important;
-            top: 0 !important; left: 0 !important;
-            width: 100% !important; height: 100% !important;
-            z-index: 1 !important;
+        #startOverlay button {
+            padding: 20px 40px; font-size: 24px; background: #6C5CE7; color: white;
+            border: none; border-radius: 12px; cursor: pointer;
         }
-        .a-scene canvas { z-index: 2 !important; background: transparent !important; }
-        .a-scene video { z-index: 0 !important; object-fit: cover !important; }
-
-        /* ===== PERMISSION OVERLAY ===== */
-        #permission-overlay {
-            position: fixed; inset: 0; z-index: 1000;
-            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 100%);
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            gap: 24px; padding: 32px 24px;
-            transition: opacity 0.5s ease;
-        }
-        #permission-overlay.hidden { opacity: 0; pointer-events: none; }
-        .permission-icon { font-size: 72px; line-height: 1; }
-        .permission-title { color: #fff; font-size: 24px; font-weight: 700; text-align: center; }
-        .permission-description {
-            color: rgba(255,255,255,0.6); font-size: 15px;
-            text-align: center; max-width: 320px; line-height: 1.6;
-        }
-
-        #start-btn {
-            background: #6C5CE7; color: #fff; border: none;
-            padding: 16px 48px; font-size: 18px; font-weight: 600;
-            border-radius: 14px; cursor: pointer;
-            transition: opacity 0.2s, transform 0.2s;
-            -webkit-appearance: none; appearance: none;
-            min-width: 200px;
-        }
-        #start-btn:hover { transform: scale(1.02); }
-        #start-btn:active { opacity: 0.8; transform: scale(0.98); }
-        #start-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
-
-        /* ===== ERROR SCREEN ===== */
-        #error-screen {
-            position: fixed; inset: 0; z-index: 2000;
-            background: #0a0a1a;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            gap: 16px; padding: 32px 24px;
-            opacity: 0; pointer-events: none;
-            transition: opacity 0.5s ease;
-        }
-        #error-screen.visible { opacity: 1; pointer-events: all; }
-        .error-icon { font-size: 60px; }
-        .error-title { color: #ff6b6b; font-size: 22px; font-weight: 700; }
-        .error-message {
-            color: rgba(255,255,255,0.6); font-size: 14px;
-            text-align: center; max-width: 300px; line-height: 1.6; white-space: pre-line;
-        }
-        .error-hint {
-            background: rgba(255,255,255,0.06); padding: 12px 20px;
-            border-radius: 10px; color: rgba(255,255,255,0.4);
-            font-size: 13px; text-align: center; max-width: 300px; line-height: 1.5;
-            margin-top: 4px;
-        }
-        #reload-btn {
-            background: transparent; color: #fff;
-            border: 2px solid rgba(255,255,255,0.2);
-            padding: 14px 40px; font-size: 16px; font-weight: 500;
-            border-radius: 12px; cursor: pointer;
-            transition: border-color 0.2s;
-            -webkit-appearance: none; appearance: none;
-            margin-top: 8px;
-        }
-        #reload-btn:hover { border-color: rgba(255,255,255,0.5); }
-
-        /* ===== LOADING INDICATOR ===== */
-        #loading {
-            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
-            z-index: 100;
-            background: rgba(0,0,0,0.75); backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            color: #fff; padding: 12px 28px; border-radius: 40px;
-            font-size: 14px; font-weight: 500;
-            display: flex; align-items: center; gap: 14px;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-            transition: opacity 0.4s ease; pointer-events: none;
-        }
-        #loading.hidden { opacity: 0; pointer-events: none; }
-        .loading-spinner {
-            width: 22px; height: 22px;
-            border: 3px solid rgba(255,255,255,0.15);
-            border-top-color: #6C5CE7;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            flex-shrink: 0;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* ===== MARKER PROMPT ===== */
-        #marker-prompt {
-            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
-            z-index: 50;
-            background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            color: #fff; padding: 10px 24px; border-radius: 30px;
-            font-size: 14px; font-weight: 500;
-            border: 1px solid rgba(255,255,255,0.08);
-            transition: opacity 0.5s ease, transform 0.5s ease;
-            white-space: nowrap; pointer-events: none;
-        }
-        #marker-prompt.hidden {
-            opacity: 0; transform: translateX(-50%) translateY(20px);
-            pointer-events: none;
-        }
-
-        @media (max-width: 480px) {
-            .permission-title { font-size: 20px; }
-            .permission-description { font-size: 14px; }
-            #start-btn { padding: 14px 36px; font-size: 16px; min-width: 160px; }
-            #loading { font-size: 12px; padding: 10px 20px; }
-            #marker-prompt { font-size: 12px; padding: 8px 18px; bottom: 80px; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-            * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-        }
+        #startOverlay.hidden { display: none; }
     </style>
 </head>
 <body>
 
-    <!-- ===== PERMISSION OVERLAY ===== -->
-    <div id="permission-overlay">
-        <div class="permission-icon">📷</div>
-        <h1 class="permission-title">AR Experience</h1>
-        <p class="permission-description">Point your camera at the marker to see the 3D model.</p>
-        <button id="start-btn">Start AR</button>
+    <div id="startOverlay">
+        <h1>📷 AR Experience</h1>
+        <p>Point your camera at the Hiro marker.</p>
+        <button id="startBtn">Start Camera</button>
     </div>
 
-    <!-- ===== ERROR SCREEN ===== -->
-    <div id="error-screen">
-        <div class="error-icon">⚠️</div>
-        <h2 class="error-title">Camera Access Required</h2>
-        <p class="error-message" id="error-message">Camera permission was denied.</p>
-        <div class="error-hint">🔧 To fix: Enable camera in browser settings, then reload.</div>
-        <button id="reload-btn">🔄 Reload</button>
-    </div>
-
-    <!-- ===== LOADING INDICATOR ===== -->
-    <div id="loading" class="hidden">
-        <div class="loading-spinner"></div>
-        <span id="loading-text">Loading AR...</span>
-    </div>
-
-    <!-- ===== MARKER PROMPT ===== -->
-    <div id="marker-prompt" class="hidden">📍 Point your camera at the marker</div>
-
-    <!-- ===== A-FRAME SCENE ===== -->
     <a-scene
-        id="ar-scene"
+        id="scene"
         embedded
         vr-mode-ui="enabled: false"
         renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true;"
         loading-screen="enabled: false"
     >
+        <!-- Lights -->
+        <a-entity light="type: ambient; intensity: 0.8;"></a-entity>
+        <a-entity light="type: directional; intensity: 0.8;" position="1 2 1"></a-entity>
 
-        <!-- ============================================================
-             🔥 LIGHTING ONLY — NO ENVIRONMENT (won't hide camera)
-             ============================================================ -->
-
-        <!-- Ambient light — soft fill light -->
-        <a-entity light="type: ambient; color: #ffffff; intensity: 0.6;"></a-entity>
-        
-        <!-- Key light — bright directional light -->
-        <a-entity light="type: directional; color: #ffffff; intensity: 0.9;" position="1 2 1"></a-entity>
-        
-        <!-- Fill light — adds color from the opposite side -->
-        <a-entity light="type: directional; color: #8888ff; intensity: 0.3;" position="-1 1 -1"></a-entity>
-
-        <!-- ===== MARKER ===== -->
+        <!-- ===== MARKER WITH YOUR MODEL ===== -->
         <a-marker 
-            id="ar-marker" 
+            id="marker" 
             preset="hiro" 
-            emitevents="true" 
-            smooth="true" 
-            smoothCount="5"
+            emitevents="true"
         >
             
-            <!-- ===== YOUR MODEL ===== -->
-            <!-- 🔥 Added material attributes to brighten the model -->
+            <!-- 🔥 YOUR MODEL (replaces the red cube) -->
             <a-entity
                 id="model-entity"
                 gltf-model="url(mode.glb)"
@@ -214,7 +58,6 @@
                 position="0 0.2 0"
                 rotation="0 0 0"
                 animation="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear"
-                material="color: #ffffff; emissive: #222222; emissiveIntensity: 0.2; metalness: 0; roughness: 0.5;"
             ></a-entity>
 
         </a-marker>
@@ -222,8 +65,43 @@
         <a-entity camera></a-entity>
     </a-scene>
 
-    <!-- ===== APP.JS ===== -->
-    <script src="app.js"></script>
+    <script>
+        (function() {
+            const overlay = document.getElementById('startOverlay');
+            const startBtn = document.getElementById('startBtn');
+            const scene = document.getElementById('scene');
+
+            startBtn.addEventListener('click', async function() {
+                startBtn.disabled = true;
+                startBtn.textContent = 'Starting...';
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment' }
+                    });
+                    stream.getTracks().forEach(track => track.stop());
+
+                    scene.setAttribute('arjs', [
+                        'sourceType: webcam',
+                        'debugUIEnabled: false',
+                        'detectionMode: mono_and_matrix',
+                        'matrixCodeType: 3x3'
+                    ].join('; '));
+
+                    overlay.classList.add('hidden');
+
+                    console.log('✅ AR started. Point at the HIRO marker!');
+
+                } catch (err) {
+                    alert('Camera error: ' + err.message);
+                    console.error(err);
+                    startBtn.disabled = false;
+                    startBtn.textContent = 'Start Camera';
+                }
+            });
+
+        })();
+    </script>
 
 </body>
 </html>
