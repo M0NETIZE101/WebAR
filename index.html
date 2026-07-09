@@ -17,15 +17,27 @@
             position: fixed; top: 0; left: 0;
         }
         .a-enter-vr, .a-orientation-modal { display: none !important; }
-        .a-scene, .a-scene canvas, .a-scene video {
+        
+        /* ===== 🔥 FIX 1: Fullscreen Video ===== */
+        video {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            object-fit: cover !important;
+            z-index: 0 !important;
+        }
+
+        .a-scene, .a-scene canvas {
             position: fixed !important;
             top: 0 !important; left: 0 !important;
             width: 100% !important; height: 100% !important;
             z-index: 1 !important;
         }
         .a-scene canvas { z-index: 2 !important; background: transparent !important; }
-        .a-scene video { z-index: 0 !important; object-fit: cover !important; }
 
+        /* ===== PERMISSION OVERLAY ===== */
         #permission-overlay {
             position: fixed; inset: 0; z-index: 1000;
             background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 100%);
@@ -50,6 +62,7 @@
         }
         #start-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+        /* ===== ERROR SCREEN ===== */
         #error-screen {
             position: fixed; inset: 0; z-index: 2000;
             background: #0a0a1a;
@@ -73,6 +86,7 @@
             margin-top: 8px;
         }
 
+        /* ===== LOADING INDICATOR ===== */
         #loading {
             position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
             z-index: 100;
@@ -93,6 +107,7 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* ===== MARKER PROMPT ===== */
         #marker-prompt {
             position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
             z-index: 50;
@@ -115,7 +130,7 @@
     <div id="permission-overlay">
         <div class="permission-icon">📷</div>
         <h1 class="permission-title">AR Experience</h1>
-        <p class="permission-description">Point your camera at the marker to see the 3D model.</p>
+        <p class="permission-description">Point your camera at the marker to see the 3D car.</p>
         <button id="start-btn">Start AR</button>
     </div>
 
@@ -145,7 +160,7 @@
         <a-entity light="type: directional; intensity: 0.8;" position="1 2 1"></a-entity>
 
         <!-- 
-            🔥 MARKER: Using HIRO for testing
+            MARKER: Using HIRO for testing
             To use your barcode QR code, change to: type="barcode" value="0"
         -->
         <a-marker 
@@ -156,12 +171,16 @@
             smoothCount="5"
         >
 
-            <!-- 🔥 YOUR MODEL — Uncommented and ready to go -->
+            <!-- 
+                🔥 FIX 2: Scale is now 0.05 (tiny, so the car fits on the marker)
+                If the car is too small, increase to 0.08 or 0.1
+                If the car is still too big, decrease to 0.02 or 0.03
+            -->
             <a-entity
                 id="model-entity"
-                gltf-model="url(model.glb)"
-                scale="0.5 0.5 0.5"
-                position="0 0.2 0"
+                gltf-model="url(mode.glb)"
+                scale="0.05 0.05 0.05"
+                position="0 0.05 0"
                 rotation="0 0 0"
                 animation="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear"
             ></a-entity>
