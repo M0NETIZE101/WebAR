@@ -13,7 +13,6 @@
     const loadingText = document.getElementById('loading-text');
     const markerPrompt = document.getElementById('marker-prompt');
     const scene = document.getElementById('ar-scene');
-    const marker = document.getElementById('ar-marker');
 
     // ==========================================
     // STATE
@@ -21,6 +20,8 @@
     let isARStarted = false;
     let markerDetected = false;
     let modelLoaded = false;
+    let videoElement = null;
+    let videoStream = null;
 
     // ==========================================
     // UI HELPERS
@@ -73,13 +74,23 @@
     }
 
     // ==========================================
-    // REQUEST CAMERA PERMISSION
+    // REQUEST CAMERA PERMISSION (Nuclear option)
     // ==========================================
     async function requestCameraPermission() {
         showLoading('Requesting camera access...');
 
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
+            // 🔥 Create a video element we'll control
+            videoElement = document.createElement('video');
+            videoElement.id = 'ar-video';
+            videoElement.setAttribute('autoplay', '');
+            videoElement.setAttribute('playsinline', '');
+            videoElement.setAttribute('muted', '');
+            videoElement.style.display = 'none';
+            document.body.appendChild(videoElement);
+
+            // Get the camera stream
+            videoStream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     facingMode: 'environment',
                     width: { ideal: 1280 },
@@ -87,12 +98,10 @@
                 }
             });
 
-            stream.getTracks().forEach(track => track.stop());
-            console.log('[AR] Manual camera stream stopped');
-
-            // 🔥 CRITICAL: Give Android time to fully release the camera hardware
-            await new Promise(resolve => setTimeout(resolve, 500));
-            console.log('[AR] Camera release delay complete');
+            // Attach to our video element
+            videoElement.srcObject = videoStream;
+            await videoElement.play();
+            console.log('[AR] Manual video stream started');
 
             return true;
 
@@ -112,14 +121,16 @@
     }
 
     // ==========================================
-    // INITIALIZE AR.JS
+    // INITIALIZE AR.JS (using pre-created video)
     // ==========================================
     function initializeARJS() {
         return new Promise((resolve, reject) => {
             showLoading('Initializing AR engine...');
 
+            // 🔥 Tell AR.js to use our pre-created video element
             scene.setAttribute('arjs', [
                 'sourceType: webcam',
+                'video: #ar-video',  // Use our video element
                 'debugUIEnabled: false',
                 'detectionMode: mono_and_matrix',
                 'matrixCodeType: 3x3',
@@ -128,50 +139,52 @@
 
             const startTime = Date.now();
             const timeout = 15000;
-            let lastReadyState = -1;
 
             function checkARSystem() {
                 const arSystem = scene.systems && scene.systems['arjs'];
                 const video = document.querySelector('video');
                 
-                if (video && video.readyState !== lastReadyState) {
-                    lastReadyState = video.readyState;
-                    console.log('[AR] Video readyState:', video.readyState, 
-                        'paused:', video.paused, 
-                        'width:', video.videoWidth);
+                // Check if our video is still playing
+                if (videoElement) {
+                    console.log('[AR] Our video - readyState:', videoElement.readyState, 
+                        'paused:', videoElement.paused, 
+                        'width:', videoElement.videoWidth);
+                    
+                    // If our video paused unexpectedly, try to resume
+                    if (videoElement.paused && videoElement.srcObject) {
+                        console.warn('[AR] Our video paused - attempting resume...');
+                        videoElement.play().catch(e => console.warn('[AR] Resume failed:', e));
+                    }
                 }
 
-                // CASE 1: Video is fully streaming
-                if (arSystem && video && video.readyState >= 2) {
+                if (arSystem && videoElement && videoElement.readyState >= 2) {
                     console.log('[AR] AR.js initialized, video streaming');
                     resolve(arSystem);
                     return;
                 }
 
-                // CASE 2: Video loading, waited 2+ seconds
-                if (arSystem && video && video.readyState >= 1 && (Date.now() - startTime) > 2000) {
+                if (arSystem && videoElement && videoElement.readyState >= 1 && (Date.now() - startTime) > 2000) {
                     console.log('[AR] AR.js ready, video loading');
                     resolve(arSystem);
                     return;
                 }
 
-                // CASE 3: Video has width (means it's rendering)
-                if (arSystem && video && video.videoWidth > 0) {
-                    console.log('[AR] AR.js ready, video has width: ' + video.videoWidth);
+                if (arSystem && videoElement && videoElement.videoWidth > 0) {
+                    console.log('[AR] AR.js ready, video has width: ' + videoElement.videoWidth);
                     resolve(arSystem);
                     return;
                 }
 
-                // 🔥 CASE 4: Emergency fallback - requires video element to exist
-                if (arSystem && video && (Date.now() - startTime) > 5000) {
-                    console.log('[AR] AR.js system exists with video, assuming ready');
+                if (arSystem && videoElement && (Date.now() - startTime) > 5000) {
+                    console.log('[AR] AR.js system exists, assuming ready');
                     resolve(arSystem);
                     return;
                 }
 
                 if (Date.now() - startTime > timeout) {
-                    const videoState = video ? 'readyState: ' + video.readyState + ', width: ' + video.videoWidth : 'NO VIDEO';
-                    console.error('[AR] Timeout - video state:', videoState);
+                    const videoState = videoElement ? 
+                        'readyState: ' + videoElement.readyState + ', width: ' + videoElement.videoWidth : 
+                        'NO VIDEO';
                     reject(new Error('AR initialization timed out.\n\nVideo state: ' + videoState));
                     return;
                 }
@@ -312,13 +325,7 @@
         markerPrompt.classList.add('hidden');
 
         console.log('[AR] App initialized');
-        console.log('[AR] ✅ All fixes applied:');
-        console.log('[AR]    - CDN: GitHub mirror (working)');
-        console.log('[AR]    - arjs config: Added via JS after permission');
-        console.log('[AR]    - Camera: 500ms delay to avoid race condition');
-        console.log('[AR]    - Case 4: Now requires video element');
-        console.log('[AR]    - animation: A-Frame component (not <a-animation> tag)');
-        console.log('[AR] 📌 Marker ID: 0 (change value="X" in index.html)');
+        console.log('[AR] 🔥 Using nuclear option: pre-created video element');
     }
 
     init();
