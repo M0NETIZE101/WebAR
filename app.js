@@ -73,12 +73,13 @@
     }
 
     // ==========================================
-    // REQUEST CAMERA PERMISSION
+    // REQUEST CAMERA PERMISSION (with delay fix)
     // ==========================================
     async function requestCameraPermission() {
         showLoading('Requesting camera access...');
 
         try {
+            // Step 1: Request camera to trigger permission prompt
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     facingMode: 'environment',
@@ -87,7 +88,17 @@
                 }
             });
 
+            // Step 2: Stop the manual stream immediately
             stream.getTracks().forEach(track => track.stop());
+            console.log('[AR] Manual camera stream stopped');
+
+            // 🔥 Step 3: CRITICAL FIX - Give Android time to fully release
+            // the camera hardware before AR.js tries to acquire it again.
+            // Without this delay, Android may report "Camera in use" (NotReadableError)
+            // because the hardware hasn't finished releasing from the first call.
+            await new Promise(resolve => setTimeout(resolve, 500));
+            console.log('[AR] Camera release delay complete');
+
             return true;
 
         } catch (err) {
@@ -98,7 +109,7 @@
             } else if (err.name === 'NotFoundError') {
                 throw new Error('No camera found.\n\nPlease connect a camera and try again.');
             } else if (err.name === 'NotReadableError') {
-                throw new Error('Camera is in use by another application.\n\nPlease close other apps using the camera.');
+                throw new Error('Camera is temporarily unavailable.\n\nPlease close other apps using the camera and reload.');
             } else {
                 throw new Error('Camera error: ' + err.message);
             }
@@ -106,7 +117,7 @@
     }
 
     // ==========================================
-    // INITIALIZE AR.JS (FIXED - Better Video Detection)
+    // INITIALIZE AR.JS
     // ==========================================
     function initializeARJS() {
         return new Promise((resolve, reject) => {
@@ -325,6 +336,7 @@
         console.log('[AR] 🔥 FIXES APPLIED:');
         console.log('[AR]    - animation: Using A-Frame component (not <a-animation> tag)');
         console.log('[AR]    - AR.js detection: Multi-stage fallback for video readiness');
+        console.log('[AR]    - Camera race condition: 500ms delay between manual stop and AR.js acquire');
     }
 
     init();
