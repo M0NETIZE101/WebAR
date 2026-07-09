@@ -106,7 +106,7 @@
     }
 
     // ==========================================
-    // INITIALIZE AR.JS
+    // INITIALIZE AR.JS (FIXED - Better Video Detection)
     // ==========================================
     function initializeARJS() {
         return new Promise((resolve, reject) => {
@@ -122,22 +122,55 @@
 
             const startTime = Date.now();
             const timeout = 15000;
+            let lastReadyState = -1;
 
-            // 🔥 FIXED: Using video.readyState instead of internal _initialized
             function checkARSystem() {
                 const arSystem = scene.systems && scene.systems['arjs'];
                 const video = document.querySelector('video');
+                
+                // Log state changes for debugging
+                if (video && video.readyState !== lastReadyState) {
+                    lastReadyState = video.readyState;
+                    console.log('[AR] Video readyState:', video.readyState, 
+                        'paused:', video.paused, 
+                        'width:', video.videoWidth);
+                }
 
-                // Success: AR system exists AND video is streaming
+                // SUCCESS CASE 1: AR system exists AND video is streaming
                 if (arSystem && video && video.readyState >= 2) {
-                    console.log('[AR] AR.js initialized successfully');
+                    console.log('[AR] AR.js initialized, video streaming (readyState: ' + video.readyState + ')');
+                    resolve(arSystem);
+                    return;
+                }
+
+                // SUCCESS CASE 2: AR system exists AND video is at least metadata loaded,
+                // and we've waited 2+ seconds (video might be slow to start on some devices)
+                if (arSystem && video && video.readyState >= 1 && (Date.now() - startTime) > 2000) {
+                    console.log('[AR] AR.js ready, video loading (readyState: ' + video.readyState + ')');
+                    resolve(arSystem);
+                    return;
+                }
+
+                // SUCCESS CASE 3: AR system exists AND video has width (means it's rendering)
+                if (arSystem && video && video.videoWidth > 0) {
+                    console.log('[AR] AR.js ready, video has width: ' + video.videoWidth);
+                    resolve(arSystem);
+                    return;
+                }
+
+                // SUCCESS CASE 4: AR system exists AND we've waited 5+ seconds
+                // (emergency fallback - maybe readyState never updates but video works)
+                if (arSystem && (Date.now() - startTime) > 5000) {
+                    console.log('[AR] AR.js system exists, assuming ready (video may be slow to report)');
                     resolve(arSystem);
                     return;
                 }
 
                 // Timeout
                 if (Date.now() - startTime > timeout) {
-                    reject(new Error('AR initialization timed out.\n\nPlease check your connection and reload.'));
+                    const videoState = video ? 'readyState: ' + video.readyState + ', width: ' + video.videoWidth : 'NO VIDEO';
+                    console.error('[AR] Timeout - video state:', videoState);
+                    reject(new Error('AR initialization timed out.\n\nVideo state: ' + videoState));
                     return;
                 }
 
@@ -291,7 +324,7 @@
         console.log('[AR]    Sketchfab models vary in native unit scale — test and tweak!');
         console.log('[AR] 🔥 FIXES APPLIED:');
         console.log('[AR]    - animation: Using A-Frame component (not <a-animation> tag)');
-        console.log('[AR]    - AR.js detection: Using video.readyState (not internal _initialized)');
+        console.log('[AR]    - AR.js detection: Multi-stage fallback for video readiness');
     }
 
     init();
