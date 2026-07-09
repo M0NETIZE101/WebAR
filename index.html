@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>QR-Embedded AR Marker Experience</title>
+    <title>AR Experience</title>
 
     <!-- A-Frame 1.4.0 -->
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     
-    <!-- ✅ FIXED: AR.js via GitHub mirror (master branch) -->
+    <!-- AR.js via GitHub mirror (master branch) -->
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
 
     <style>
-        /* ===== RESET & FULLSCREEN ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         html, body {
@@ -168,7 +167,7 @@
         <div class="permission-icon">📷</div>
         <h1 class="permission-title">AR Experience</h1>
         <p class="permission-description">
-            This experience needs camera access to scan for markers and display 3D content in augmented reality.
+            Point your camera at the marker to see the 3D model in augmented reality.
         </p>
         <button id="start-btn">Start AR</button>
     </div>
@@ -200,17 +199,44 @@
         loading-screen="enabled: false"
     >
         <!--
-            BARCODE MARKER CONFIGURATION
-            Marker ID: 0 (change value="X" in index.html)
-            Physical marker: QR code with embedded barcode pattern
-            Generated separately - not part of this codebase
+            ============================================================
+            MARKER CONFIGURATION
+            ============================================================
+            Choose which marker to use:
+
+            OPTION 1: HIRO (built-in pattern) — for testing
+            <a-marker preset="hiro" ...>
+
+            OPTION 2: BARCODE (ID 0-255) — for your QR code
+            <a-marker type="barcode" value="0" ...>
+            ============================================================
         -->
-        <a-marker id="ar-marker" type="barcode" value="0" emitevents="true">
+
+        <!-- 🔥 CURRENTLY USING: Hiro (built-in) for testing -->
+        <!-- To use your barcode QR code, replace 'preset="hiro"' with 'type="barcode" value="0"' -->
+        <a-marker 
+            id="ar-marker" 
+            preset="hiro" 
+            emitevents="true" 
+            smooth="true" 
+            smoothCount="5"
+        >
+            
             <!--
-                Model configuration:
-                - Place your model.glb in the same folder
-                - scale="0.15 0.15 0.15" is a starting guess
-                - animation: A-Frame component for continuous rotation
+                ============================================================
+                YOUR 3D MODEL
+                ============================================================
+                Place model.glb in the SAME folder as this HTML file.
+                
+                🔥 SCALE TIPS:
+                    - Too small? Increase to 0.5 0.5 0.5 or 1 1 1
+                    - Too big? Decrease to 0.05 0.05 0.05 or 0.1 0.1 0.1
+                
+                🔥 POSITION TIPS:
+                    - 0 0.2 0 = 0.2 units above the marker (good starting point)
+                    - Increase Y to raise it higher
+                    - Decrease Y to lower it closer to the marker
+                ============================================================
             -->
             <a-entity
                 id="model-entity"
@@ -220,11 +246,63 @@
                 rotation="0 0 0"
                 animation="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear"
             ></a-entity>
+
+            <!-- 
+                Optional: Ground shadow for realism
+                This creates a subtle shadow disc under the model
+            -->
+            <a-entity
+                position="0 -0.1 0"
+                rotation="-90 0 0"
+                scale="0.6 0.6 0.6"
+            >
+                <a-circle
+                    material="color: black; transparent: true; opacity: 0.2;"
+                ></a-circle>
+            </a-entity>
+
         </a-marker>
 
         <a-entity camera></a-entity>
     </a-scene>
 
+    <!-- ===== APP.JS ===== -->
     <script src="app.js"></script>
+
+    <!--
+        ============================================================
+        DEBUG PANEL — Shows real-time status
+        Remove this when everything is working!
+        ============================================================
+    -->
+    <script>
+        (function() {
+            const panel = document.createElement('div');
+            panel.style.cssText = 'position:fixed;top:0;left:0;right:0;background:rgba(0,0,0,0.85);color:#0f0;font-family:monospace;font-size:11px;padding:8px;z-index:99999;max-height:30vh;overflow-y:auto;white-space:pre-wrap;';
+            document.body.appendChild(panel);
+
+            setInterval(() => {
+                const video = document.querySelector('video');
+                const canvas = document.querySelector('canvas');
+                const scene = document.getElementById('ar-scene');
+                const arSystem = scene && scene.systems && scene.systems['arjs'];
+                const marker = document.getElementById('ar-marker');
+                const model = document.getElementById('model-entity');
+
+                panel.textContent =
+                    '[DEBUG ' + new Date().toLocaleTimeString() + ']\n' +
+                    'arSystem: ' + (arSystem ? '✅ EXISTS' : '❌ MISSING') + '\n' +
+                    'video: ' + (video ? '✅ ' + video.readyState : '❌ MISSING') + '\n' +
+                    'canvas: ' + (canvas ? '✅ EXISTS' : '❌ MISSING') + '\n' +
+                    'marker: ' + (marker ? '✅ EXISTS' : '❌ MISSING') + '\n' +
+                    'model: ' + (model ? '✅ EXISTS' : '❌ MISSING') + '\n' +
+                    'model loaded: ' + (model && model.hasLoaded ? '✅ YES' : '⏳ WAITING') + '\n' +
+                    'video.srcObject: ' + (video && video.srcObject ? '✅ SET' : '❌ NOT SET') + '\n' +
+                    'video.readyState: ' + (video ? video.readyState : 'N/A') + '\n' +
+                    'video.videoWidth: ' + (video ? video.videoWidth : 'N/A');
+            }, 500);
+        })();
+    </script>
+
 </body>
 </html>
