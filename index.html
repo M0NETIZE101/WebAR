@@ -10,9 +10,12 @@
     
     <!-- AR.js via jsDelivr ONLY - no unofficial mirrors -->
     <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.4/aframe/build/aframe-ar.min.js"></script>
-    
-    <!-- aframe-extras for animation-mixer (baked animations) -->
-    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+
+    <!--
+        aframe-extras is NOT needed for this model (no baked animations).
+        If you add a model with animations later, uncomment this:
+        <script src="https://cdn.jsdelivr.net/npm/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+    -->
 
     <style>
         /* ===== RESET & FULLSCREEN ===== */
@@ -379,14 +382,12 @@
             <!--
                 Model configuration:
                 - Place your model.glb in the same folder as index.html
-                - animation-mixer: plays baked animations from the .glb
-                - animation: A-Frame component-based fallback rotation
-                  🔥 FIXED: Using the animation COMPONENT (not <a-animation> tag)
+                - scale="0.15 0.15 0.15" is a starting guess.
+                  Sketchfab models vary wildly in native unit scale —
+                  adjust this after testing with your actual model.
+                - 🔥 FIXED: Using animation COMPONENT (not <a-animation> tag)
                   animation="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear"
-                
-                Note: Both animations run simultaneously. If your model has
-                baked animations, it will rotate while walking. Remove the
-                'animation' attribute if you only want the baked animation.
+                - No animation-mixer needed (no baked animations in this model)
             -->
             <a-entity
                 id="model-entity"
@@ -394,7 +395,6 @@
                 scale="0.15 0.15 0.15"
                 position="0 0.2 0"
                 rotation="0 0 0"
-                animation-mixer="clip: *; loop: repeat; timeScale: 1;"
                 animation="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear"
             ></a-entity>
         </a-marker>

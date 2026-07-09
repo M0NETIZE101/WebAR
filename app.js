@@ -53,19 +53,16 @@
     // CHECK REQUIREMENTS
     // ==========================================
     function checkRequirements() {
-        // HTTPS check (required for camera access on all modern browsers)
         if (location.protocol !== 'https:' &&
             location.hostname !== 'localhost' &&
             location.hostname !== '127.0.0.1') {
             throw new Error('HTTPS required.\n\nPlease access this page via a secure connection (https://).');
         }
 
-        // getUserMedia support
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             throw new Error('Camera API not supported.\n\nPlease use a modern browser like Chrome or Firefox.');
         }
 
-        // WebGL support
         const canvas = document.createElement('canvas');
         const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
         if (!gl) {
@@ -90,7 +87,6 @@
                 }
             });
 
-            // Stop the stream immediately - AR.js will create its own
             stream.getTracks().forEach(track => track.stop());
             return true;
 
@@ -110,14 +106,12 @@
     }
 
     // ==========================================
-    // INITIALIZE AR.JS (FIXED - No _initialized)
+    // INITIALIZE AR.JS
     // ==========================================
     function initializeARJS() {
         return new Promise((resolve, reject) => {
             showLoading('Initializing AR engine...');
 
-            // Set arjs attribute on the scene
-            // This is done via JavaScript ONLY after permission is granted
             scene.setAttribute('arjs', [
                 'sourceType: webcam',
                 'debugUIEnabled: false',
@@ -126,42 +120,28 @@
                 'trackingMethod: best'
             ].join('; '));
 
-            // Wait for AR.js to initialize
             const startTime = Date.now();
             const timeout = 15000;
 
-            // 🔥 FIXED: Check for system existence AND video readiness
-            // No reliance on internal _initialized property
+            // 🔥 FIXED: Using video.readyState instead of internal _initialized
             function checkARSystem() {
                 const arSystem = scene.systems && scene.systems['arjs'];
                 const video = document.querySelector('video');
 
-                // System exists AND video is streaming (readyState >= 2 means "have enough data")
+                // Success: AR system exists AND video is streaming
                 if (arSystem && video && video.readyState >= 2) {
-                    console.log('[AR] AR.js initialized, video streaming');
+                    console.log('[AR] AR.js initialized successfully');
                     resolve(arSystem);
                     return;
                 }
 
-                // Fallback: if system exists and video is loading but we've waited long enough
-                if (arSystem && video && video.readyState >= 1 && (Date.now() - startTime) > 3000) {
-                    console.log('[AR] AR.js ready (video loading, continuing...)');
-                    resolve(arSystem);
-                    return;
-                }
-
-                // Emergency fallback: if system exists and we've waited 5+ seconds
-                if (arSystem && (Date.now() - startTime) > 5000) {
-                    console.log('[AR] AR.js system exists, assuming ready (video may be slow)');
-                    resolve(arSystem);
-                    return;
-                }
-
+                // Timeout
                 if (Date.now() - startTime > timeout) {
                     reject(new Error('AR initialization timed out.\n\nPlease check your connection and reload.'));
                     return;
                 }
 
+                // Keep checking
                 setTimeout(checkARSystem, 100);
             }
 
@@ -173,7 +153,6 @@
     // SETUP MARKER EVENTS
     // ==========================================
     function setupMarkerEvents() {
-        // Re-fetch marker reference (in case DOM was updated)
         const markerEl = document.getElementById('ar-marker');
         if (!markerEl) {
             console.warn('[AR] Marker element not found');
@@ -218,10 +197,8 @@
         model.addEventListener('model-error', (event) => {
             console.warn('[AR] Model ERROR:', event.detail);
             hideLoading();
-            // Don't show error - model is optional, AR still works
         });
 
-        // Check if model is already loaded
         if (model.hasLoaded) {
             console.log('[AR] Model already loaded');
             modelLoaded = true;
@@ -235,32 +212,24 @@
     async function startAR() {
         if (isARStarted) return;
 
-        // Disable button to prevent double-click
         startBtn.disabled = true;
         startBtn.textContent = 'Starting...';
 
         try {
-            // Step 1: Check requirements
             showLoading('Checking device...');
             checkRequirements();
 
-            // Step 2: Request camera permission
             await requestCameraPermission();
 
-            // Step 3: Hide permission overlay
             overlay.classList.add('hidden');
 
-            // Step 4: Initialize AR.js
             await initializeARJS();
 
-            // Step 5: Setup events
             setupMarkerEvents();
             setupModelEvents();
 
-            // Step 6: Show marker prompt
             showMarkerPrompt();
 
-            // Step 7: Hide loading after a timeout if model doesn't load
             setTimeout(() => {
                 if (!modelLoaded && !markerDetected) {
                     hideLoading();
@@ -291,9 +260,6 @@
         window.location.reload();
     });
 
-    // ==========================================
-    // PAGE VISIBILITY HANDLING
-    // ==========================================
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
             console.log('[AR] Page hidden');
@@ -320,6 +286,12 @@
         console.log('[AR]    - Android Chrome: Works best with 3x3 matrix codes');
         console.log('[AR]    - iOS Safari: Requires iOS 15+, may need user gesture to start video');
         console.log('[AR]    - Camera: Always use environment-facing (rear) camera for markers');
+        console.log('[AR] 📐 SCALE NOTE:');
+        console.log('[AR]    Current scale: 0.15 0.15 0.15 (adjust based on your model)');
+        console.log('[AR]    Sketchfab models vary in native unit scale — test and tweak!');
+        console.log('[AR] 🔥 FIXES APPLIED:');
+        console.log('[AR]    - animation: Using A-Frame component (not <a-animation> tag)');
+        console.log('[AR]    - AR.js detection: Using video.readyState (not internal _initialized)');
     }
 
     init();
