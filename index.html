@@ -1,82 +1,406 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no">
-    <title>Markerless AR Vision</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>QR-Embedded AR Marker Experience</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
-
+    <!-- A-Frame 1.4.0 (stable with AR.js 2.2.4) -->
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+    
+    <!-- AR.js via jsDelivr ONLY - no unofficial mirrors -->
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.4/aframe/build/aframe-ar.min.js"></script>
+    
+    <!-- aframe-extras for animation-mixer (baked animations) -->
     <script src="https://cdn.jsdelivr.net/npm/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+
+    <style>
+        /* ===== RESET & FULLSCREEN ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        /* Hide A-Frame UI */
+        .a-enter-vr,
+        .a-orientation-modal {
+            display: none !important;
+        }
+
+        /* Force fullscreen for all A-Frame elements */
+        .a-scene,
+        .a-scene canvas,
+        .a-scene video {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 1 !important;
+        }
+
+        .a-scene canvas {
+            z-index: 2 !important;
+            background: transparent !important;
+        }
+
+        .a-scene video {
+            z-index: 0 !important;
+            object-fit: cover !important;
+        }
+
+        /* ===== PERMISSION OVERLAY ===== */
+        #permission-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            padding: 32px 24px;
+            transition: opacity 0.5s ease;
+        }
+
+        #permission-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .permission-icon {
+            font-size: 72px;
+            line-height: 1;
+        }
+
+        .permission-title {
+            color: #fff;
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .permission-description {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 15px;
+            text-align: center;
+            max-width: 320px;
+            line-height: 1.6;
+        }
+
+        #start-btn {
+            background: #6C5CE7;
+            color: #fff;
+            border: none;
+            padding: 16px 48px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.2s;
+            -webkit-appearance: none;
+            appearance: none;
+            min-width: 200px;
+        }
+
+        #start-btn:hover {
+            transform: scale(1.02);
+        }
+
+        #start-btn:active {
+            opacity: 0.8;
+            transform: scale(0.98);
+        }
+
+        #start-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ===== ERROR SCREEN ===== */
+        #error-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background: #0a0a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 32px 24px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+
+        #error-screen.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .error-icon {
+            font-size: 60px;
+        }
+
+        .error-title {
+            color: #ff6b6b;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .error-message {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            text-align: center;
+            max-width: 300px;
+            line-height: 1.6;
+            white-space: pre-line;
+        }
+
+        .error-hint {
+            background: rgba(255, 255, 255, 0.06);
+            padding: 12px 20px;
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 13px;
+            text-align: center;
+            max-width: 300px;
+            line-height: 1.5;
+            margin-top: 4px;
+        }
+
+        #reload-btn {
+            background: transparent;
+            color: #fff;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            padding: 14px 40px;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            -webkit-appearance: none;
+            appearance: none;
+            margin-top: 8px;
+        }
+
+        #reload-btn:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* ===== LOADING INDICATOR ===== */
+        #loading {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: #fff;
+            padding: 12px 28px;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+
+        #loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 22px;
+            height: 22px;
+            border: 3px solid rgba(255, 255, 255, 0.15);
+            border-top-color: #6C5CE7;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ===== MARKER PROMPT ===== */
+        #marker-prompt {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        #marker-prompt.hidden {
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+            pointer-events: none;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 480px) {
+            .permission-title {
+                font-size: 20px;
+            }
+            .permission-description {
+                font-size: 14px;
+            }
+            #start-btn {
+                padding: 14px 36px;
+                font-size: 16px;
+                min-width: 160px;
+            }
+            #loading {
+                font-size: 12px;
+                padding: 10px 20px;
+            }
+            #marker-prompt {
+                font-size: 12px;
+                padding: 8px 18px;
+                bottom: 80px;
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
 </head>
 <body>
 
-    <!-- LANDING PAGE -->
-    <div id="landing">
-        <div class="bg-layer bg-grid"></div>
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="landing-scroll">
-            <div class="logo">MARKERLESS AR</div>
-            <p class="tagline">No printed images needed. Point your camera at any flat surface to summon 3D objects.</p>
-            
-            <div class="card">
-                <div class="card-badge"><i class="fas fa-cube" style="font-size:0.7rem"></i></div>
-                <div class="card-title">How it works</div>
-                <div class="card-desc">This uses AI-powered surface detection. It scans your environment in real-time to find floors, tables, or desks, and anchors the 3D model to that physical space.</div>
-            </div>
-
-            <div class="card">
-                <div class="card-badge">!</div>
-                <div class="card-title">Requirements for Best Results</div>
-                <ul class="req-list">
-                    <li><i class="fas fa-check"></i> Good lighting (avoid dark rooms)</li>
-                    <li><i class="fas fa-check"></i> Point at a textured surface (wood, tiles, carpet)</li>
-                    <li><i class="fas fa-check"></i> Move your phone slowly to map the room</li>
-                    <li><i class="fas fa-check"></i> Modern Android (Chrome) or iOS (Safari 15+)</li>
-                </ul>
-            </div>
-
-            <button class="launch-btn" id="launchBtn">
-                <i class="fas fa-camera"></i> LAUNCH SURFACE SCANNER
-            </button>
-        </div>
+    <!-- ===== PERMISSION OVERLAY ===== -->
+    <div id="permission-overlay">
+        <div class="permission-icon">📷</div>
+        <h1 class="permission-title">AR Experience</h1>
+        <p class="permission-description">
+            This experience needs camera access to scan for markers and display 3D content in augmented reality.
+        </p>
+        <button id="start-btn">Start AR</button>
     </div>
 
-    <!-- AR OVERLAY UI -->
-    <div id="arOverlay">
-        <div class="ar-top">
-            <button class="ar-btn" id="backBtn"><i class="fas fa-arrow-left"></i> Back</button>
-            <div class="ar-status">
-                <div class="status-dot" id="statusDot"></div>
-                <span id="statusText">Scanning surfaces...</span>
-            </div>
+    <!-- ===== ERROR SCREEN ===== -->
+    <div id="error-screen">
+        <div class="error-icon">⚠️</div>
+        <h2 class="error-title">Camera Access Required</h2>
+        <p class="error-message" id="error-message">
+            Camera permission was denied.
+        </p>
+        <div class="error-hint">
+            🔧 To fix: Enable camera in browser settings, then reload.
         </div>
-        <div class="scan-hint-ar" id="scanHint">
-            <i class="fas fa-hand-pointer"></i> Tap screen to place model
-        </div>
-        <div class="model-bar">
-    <button class="mbtn active" data-model="car" title="Sports Car"><i class="fas fa-car"></i></button>
-    <button class="mbtn" data-model="crow" title="Animated Crow"><i class="fas fa-crow"></i></button>  <!-- NEW -->
-    <button class="mbtn" data-model="crystal" title="Crystal"><i class="fas fa-gem"></i></button>
-    <button class="mbtn" data-model="solar" title="Solar System"><i class="fas fa-sun"></i></button>
-    <button class="mbtn" data-model="rocket" title="Rocket"><i class="fas fa-rocket"></i></button>
-</div>
+        <button id="reload-btn">🔄 Reload</button>
     </div>
 
-    <!-- LOADING -->
-    <div class="ar-loading" id="arLoading">
-        <div class="spinner"></div>
-        <div class="loading-text" id="loadingText">Loading AR Engine...</div>
+    <!-- ===== LOADING INDICATOR ===== -->
+    <div id="loading" class="hidden">
+        <div class="loading-spinner"></div>
+        <span id="loading-text">Loading AR...</span>
     </div>
 
-    <!-- TOAST -->
-    <div id="toast"></div>
+    <!-- ===== MARKER PROMPT ===== -->
+    <div id="marker-prompt" class="hidden">📍 Point your camera at the marker</div>
+
+    <!-- ===== A-FRAME SCENE ===== -->
+    <!--
+        IMPORTANT: The arjs attribute is NOT set here.
+        It will be added via JavaScript after camera permission is granted.
+        This prevents automatic camera access before the user clicks "Start AR".
+    -->
+    <a-scene
+        id="ar-scene"
+        embedded
+        vr-mode-ui="enabled: false"
+        renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true;"
+        loading-screen="enabled: false"
+    >
+        <!--
+            BARCODE MARKER CONFIGURATION
+
+            This uses AR.js's barcode marker type (not the default Hiro pattern).
+            The physical marker is a QR code with this barcode pattern embedded
+            as its center logo. The QR code is generated separately (not part of
+            this codebase).
+
+            To use:
+            1. Generate a barcode marker pattern using AR.js marker generator
+            2. Embed it as the center logo of a QR code
+            3. Replace the value below with your marker ID
+            4. The app will detect the barcode marker via camera once the page loads
+
+            📌 QUIRK: AR.js barcode markers are case-sensitive.
+                   Use numeric values only (e.g., 0, 1, 2, 3...)
+                   as per AR.js documentation.
+        -->
+        <a-marker
+            id="ar-marker"
+            type="barcode"
+            value="0"
+            emitevents="true"
+        >
+            <!--
+                Model configuration:
+                - Place your model.glb in the same folder as index.html
+                - animation-mixer: plays baked animations from the .glb
+                - animation: A-Frame component-based fallback rotation
+                  🔥 FIXED: Using the animation COMPONENT (not <a-animation> tag)
+                  animation="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear"
+                
+                Note: Both animations run simultaneously. If your model has
+                baked animations, it will rotate while walking. Remove the
+                'animation' attribute if you only want the baked animation.
+            -->
+            <a-entity
+                id="model-entity"
+                gltf-model="url(model.glb)"
+                scale="0.15 0.15 0.15"
+                position="0 0.2 0"
+                rotation="0 0 0"
+                animation-mixer="clip: *; loop: repeat; timeScale: 1;"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear"
+            ></a-entity>
+        </a-marker>
+
+        <a-entity camera></a-entity>
+    </a-scene>
 
     <script src="app.js"></script>
 </body>

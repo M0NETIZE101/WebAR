@@ -2,481 +2,326 @@
     'use strict';
 
     // ==========================================
-    // DOM REFS
+    // DOM REFERENCES
     // ==========================================
-    const landing = document.getElementById('landing');
-    const launchBtn = document.getElementById('launchBtn');
-    const arOverlay = document.getElementById('arOverlay');
-    const backBtn = document.getElementById('backBtn');
-    const statusDot = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
-    const scanHint = document.getElementById('scanHint');
-    const arLoading = document.getElementById('arLoading');
-    const loadingText = document.getElementById('loadingText');
-    const toastEl = document.getElementById('toast');
-    const modelBtns = document.querySelectorAll('.mbtn');
-
-    let toastTimer;
-    let isARActive = false;
-    let isPlaced = false;
+    const overlay = document.getElementById('permission-overlay');
+    const startBtn = document.getElementById('start-btn');
+    const errorScreen = document.getElementById('error-screen');
+    const errorMessage = document.getElementById('error-message');
+    const reloadBtn = document.getElementById('reload-btn');
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
+    const markerPrompt = document.getElementById('marker-prompt');
+    const scene = document.getElementById('ar-scene');
+    const marker = document.getElementById('ar-marker');
 
     // ==========================================
-    // TOAST NOTIFICATIONS
+    // STATE
     // ==========================================
-    function showToast(msg, dur = 3000) {
-        toastEl.textContent = msg;
-        toastEl.classList.add('show');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => toastEl.classList.remove('show'), dur);
+    let isARStarted = false;
+    let markerDetected = false;
+    let modelLoaded = false;
+
+    // ==========================================
+    // UI HELPERS
+    // ==========================================
+    function showLoading(text) {
+        loadingText.textContent = text || 'Loading AR...';
+        loading.classList.remove('hidden');
+    }
+
+    function hideLoading() {
+        loading.classList.add('hidden');
+    }
+
+    function showError(message) {
+        errorMessage.textContent = message || 'An unknown error occurred.';
+        errorScreen.classList.add('visible');
+        overlay.classList.add('hidden');
+        hideLoading();
+    }
+
+    function showMarkerPrompt() {
+        markerPrompt.classList.remove('hidden');
+    }
+
+    function hideMarkerPrompt() {
+        markerPrompt.classList.add('hidden');
     }
 
     // ==========================================
-    // FORCE VIDEO FULLSCREEN & Z-INDEX FIX
+    // CHECK REQUIREMENTS
     // ==========================================
-    function forceVideoFullscreen() {
-        let attempts = 0;
-        const maxAttempts = 30;
-        
-        const interval = setInterval(() => {
-            const video = document.querySelector('video');
-            const canvas = document.querySelector('canvas');
-            const scene = document.querySelector('a-scene');
-            
-            // 🔥 FORCE VIDEO TO BACKGROUND
-            if (video) {
-                video.style.position = 'fixed';
-                video.style.top = '0';
-                video.style.left = '0';
-                video.style.width = '100vw';
-                video.style.height = '100vh';
-                video.style.maxWidth = '100vw';
-                video.style.maxHeight = '100vh';
-                video.style.objectFit = 'cover';
-                video.style.zIndex = '0';
-                video.style.pointerEvents = 'none';
-                video.style.display = 'block';
-                video.style.backgroundColor = '#000';
-                video.style.setProperty('z-index', '0', 'important');
-            }
-            
-            // 🔥 FORCE CANVAS TO FOREGROUND (ON TOP OF VIDEO)
-            if (canvas) {
-                canvas.style.position = 'fixed';
-                canvas.style.top = '0';
-                canvas.style.left = '0';
-                canvas.style.width = '100vw';
-                canvas.style.height = '100vh';
-                canvas.style.maxWidth = '100vw';
-                canvas.style.maxHeight = '100vh';
-                canvas.style.display = 'block';
-                canvas.style.zIndex = '1';
-                canvas.style.background = 'transparent';
-                canvas.style.pointerEvents = 'auto';
-                canvas.style.setProperty('z-index', '1', 'important');
-                canvas.style.setProperty('background', 'transparent', 'important');
-            }
-            
-            // Scene container
-            if (scene) {
-                scene.style.position = 'fixed';
-                scene.style.top = '0';
-                scene.style.left = '0';
-                scene.style.width = '100vw';
-                scene.style.height = '100vh';
-                scene.style.zIndex = '0';
-                scene.style.setProperty('z-index', '0', 'important');
-            }
-            
-            attempts++;
-            if (attempts >= maxAttempts || (video && canvas)) {
-                clearInterval(interval);
-                console.log('[AR] Fullscreen & z-index force complete');
-            }
-        }, 200);
+    function checkRequirements() {
+        // HTTPS check (required for camera access on all modern browsers)
+        if (location.protocol !== 'https:' &&
+            location.hostname !== 'localhost' &&
+            location.hostname !== '127.0.0.1') {
+            throw new Error('HTTPS required.\n\nPlease access this page via a secure connection (https://).');
+        }
+
+        // getUserMedia support
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('Camera API not supported.\n\nPlease use a modern browser like Chrome or Firefox.');
+        }
+
+        // WebGL support
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        if (!gl) {
+            throw new Error('WebGL not available.\n\nYour device or browser may not support 3D rendering.');
+        }
+
+        return true;
     }
 
     // ==========================================
-    // NUCLEAR Z-INDEX FIX (Emergency)
+    // REQUEST CAMERA PERMISSION
     // ==========================================
-    function nuclearZIndexFix() {
-        const video = document.querySelector('video');
-        const canvas = document.querySelector('canvas');
-        const scene = document.querySelector('a-scene');
-        
-        if (video) {
-            video.style.setProperty('z-index', '0', 'important');
-            video.style.setProperty('position', 'fixed', 'important');
-            video.style.setProperty('top', '0', 'important');
-            video.style.setProperty('left', '0', 'important');
-            video.style.setProperty('width', '100vw', 'important');
-            video.style.setProperty('height', '100vh', 'important');
-            video.style.setProperty('pointer-events', 'none', 'important');
-            video.style.setProperty('object-fit', 'cover', 'important');
-        }
-        
-        if (canvas) {
-            canvas.style.setProperty('z-index', '100', 'important');
-            canvas.style.setProperty('position', 'fixed', 'important');
-            canvas.style.setProperty('top', '0', 'important');
-            canvas.style.setProperty('left', '0', 'important');
-            canvas.style.setProperty('width', '100vw', 'important');
-            canvas.style.setProperty('height', '100vh', 'important');
-            canvas.style.setProperty('background', 'transparent', 'important');
-            canvas.style.setProperty('pointer-events', 'auto', 'important');
-        }
-        
-        if (scene) {
-            scene.style.setProperty('z-index', '0', 'important');
-        }
-        
-        console.log('[AR] Nuclear z-index fix applied');
-    }
+    async function requestCameraPermission() {
+        showLoading('Requesting camera access...');
 
-    // ==========================================
-    // CREATE A-FRAME SCENE
-    // ==========================================
-    function createScene() {
-        const oldScene = document.querySelector('a-scene');
-        if (oldScene) oldScene.remove();
-
-        const scene = document.createElement('a-scene');
-        scene.setAttribute('embedded', '');
-        scene.setAttribute('vr-mode-ui', 'enabled: false');
-        // 🔥 ADD alpha: true for transparency
-        scene.setAttribute('renderer', 'logarithmicDepthBuffer: true; antialias: true; precision: mediump; alpha: true;');
-        scene.setAttribute('loading-screen', 'enabled: false');
-        scene.setAttribute('arjs',
-            'sourceType: webcam; debugUIEnabled: false; detectionMode: mono; trackingMethod: best;'
-        );
-
-        // 🔥 FIXED: Only car is visible by default (since car.glb now exists)
-        scene.innerHTML = `
-            <!-- Model container - starts hidden, becomes visible on tap -->
-            <a-entity id="model-container" position="0 0 -1" visible="false">
-                
-                <!-- 🚗 CAR MODEL (DEFAULT - VISIBLE) -->
-                <a-entity 
-                    id="car-model" 
-                    gltf-model="url(car.glb)" 
-                    scale="0.15 0.15 0.15" 
-                    rotation="0 0 0"
-                    animation-mixer="clip: *; loop: repeat"
-                    visible="true"
-                ></a-entity>
-                
-                <!-- 🐦 CROW MODEL (HIDDEN) -->
-                <a-entity 
-                    id="crow-model" 
-                    gltf-model="url(models/animated_crow/scene.gltf)" 
-                    scale="0.5 0.5 0.5" 
-                    rotation="0 0 0"
-                    animation-mixer="clip: *; loop: repeat"
-                    visible="false"
-                ></a-entity>
-                
-                <!-- 💎 CRYSTAL MODEL (HIDDEN) -->
-                <a-entity id="crystal-model" visible="false">
-                    <a-box position="0 0.5 0" scale="0.3 0.3 0.3" material="color: #00ffaa; shader: flat;"></a-box>
-                    <a-torus-knot position="0 0.3 0" scale="0.2 0.2 0.2" material="color: #00c8ff; wireframe: true;"></a-torus-knot>
-                </a-entity>
-                
-                <!-- 🌞 SOLAR SYSTEM MODEL (HIDDEN) -->
-                <a-entity id="solar-model" visible="false">
-                    <a-sphere position="0 0.5 0" scale="0.15 0.15 0.15" material="color: #ffaa00;"></a-sphere>
-                    <a-torus position="0 0.5 0" scale="0.3 0.3 0.3" rotation="90 0 0" material="color: #ffffff; transparent: true; opacity: 0.2;"></a-torus>
-                    <a-torus position="0 0.5 0" scale="0.4 0.4 0.4" rotation="90 0 0" material="color: #ffffff; transparent: true; opacity: 0.1;"></a-torus>
-                </a-entity>
-                
-                <!-- 🚀 ROCKET MODEL (HIDDEN) -->
-                <a-entity id="rocket-model" visible="false">
-                    <a-cone position="0 0.6 0" scale="0.1 0.2 0.1" material="color: #ff2d2d;"></a-cone>
-                    <a-cylinder position="0 0.3 0" scale="0.08 0.2 0.08" material="color: #eeeeee;"></a-cylinder>
-                    <a-cone position="0 -0.05 0" scale="0.04 0.08 0.04" material="color: #ff8800;"></a-cone>
-                    <a-cylinder position="0 -0.15 0" scale="0.06 0.04 0.06" material="color: #444455;"></a-cylinder>
-                </a-entity>
-            </a-entity>
-
-            <a-entity camera></a-entity>
-        `;
-
-        document.body.appendChild(scene);
-
-        // Apply z-index fixes
-        setTimeout(forceVideoFullscreen, 300);
-        setTimeout(nuclearZIndexFix, 1000);
-
-        // Setup tap to place
-        setupPlacement(scene);
-
-        // Setup model switching
-        setupModelSwitching();
-
-        return scene;
-    }
-
-    // ==========================================
-    // TAP TO PLACE - FIXED
-    // ==========================================
-    function setupPlacement(scene) {
-        const container = document.getElementById('model-container');
-        if (!container) {
-            console.error('[AR] Container not found!');
-            return;
-        }
-
-        // Get the canvas for click events
-        const canvas = document.querySelector('canvas');
-        if (!canvas) {
-            console.error('[AR] Canvas not found!');
-            return;
-        }
-
-        // 🔥 FIXED: Clearer placement logic with better position calculation
-        const placeModel = function(event) {
-            // Get camera position and direction
-            const camera = document.querySelector('a-entity[camera]');
-            if (!camera) {
-                console.warn('[AR] Camera not found');
-                return;
-            }
-
-            // Get camera's world position and forward direction
-            const pos = camera.object3D.position.clone();
-            const dir = new THREE.Vector3(0, 0, -1);
-            dir.applyQuaternion(camera.object3D.quaternion);
-            
-            // Place model 1 meter in front of camera, slightly above ground
-            const distance = 1.0;
-            const targetPos = pos.clone().add(dir.multiplyScalar(distance));
-            targetPos.y = -0.15; // Slightly above floor level
-
-            // Update container position and make visible
-            container.setAttribute('position', targetPos);
-            container.setAttribute('visible', 'true');
-            
-            // Log for debugging
-            console.log('[AR] Model placed at:', targetPos);
-            
-            // Update UI
-            if (!isPlaced) {
-                isPlaced = true;
-                scanHint.classList.add('hidden');
-                showToast('Model placed! Tap again to move', 1500);
-            } else {
-                showToast('Model moved!', 1000);
-            }
-        };
-
-        // Add click listener
-        canvas.addEventListener('click', placeModel);
-        console.log('[AR] Click listener added to canvas');
-
-        // Touch support for mobile
-        canvas.addEventListener('touchstart', function(event) {
-            // Prevent default to avoid scrolling
-            event.preventDefault();
-            
-            const touch = event.touches[0];
-            if (!touch) return;
-            
-            // Create a simulated click event
-            const clickEvent = new MouseEvent('click', {
-                clientX: touch.clientX,
-                clientY: touch.clientY
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
             });
-            canvas.dispatchEvent(clickEvent);
-        }, { passive: false });
 
-        console.log('[AR] Tap to place setup complete');
-    }
+            // Stop the stream immediately - AR.js will create its own
+            stream.getTracks().forEach(track => track.stop());
+            return true;
 
-    // ==========================================
-    // MODEL SWITCHING - FIXED
-    // ==========================================
-    function setupModelSwitching() {
-        const models = {
-            car: 'car-model',
-            crow: 'crow-model',
-            crystal: 'crystal-model',
-            solar: 'solar-model',
-            rocket: 'rocket-model'
-        };
+        } catch (err) {
+            console.error('[AR] Camera permission error:', err);
 
-        // 🔥 FIXED: Default to car (since car.glb now exists)
-        let currentModel = 'car';
-
-        modelBtns.forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const modelKey = this.dataset.model;
-                if (modelKey === currentModel) return;
-
-                // Update button states
-                modelBtns.forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-
-                // Hide all models, show only the selected one
-                const modelIds = Object.values(models);
-                modelIds.forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) {
-                        el.setAttribute('visible', id === models[modelKey]);
-                    }
-                });
-
-                currentModel = modelKey;
-                showToast('Switched to ' + modelKey.charAt(0).toUpperCase() + modelKey.slice(1));
-                console.log('[AR] Switched to:', modelKey);
-            });
-        });
-
-        // 🔥 FIXED: Set car as active initially
-        modelBtns.forEach(btn => {
-            if (btn.dataset.model === 'car') {
-                btn.classList.add('active');
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                throw new Error('Camera permission denied.\n\nPlease allow camera access in your browser settings and reload.');
+            } else if (err.name === 'NotFoundError') {
+                throw new Error('No camera found.\n\nPlease connect a camera and try again.');
+            } else if (err.name === 'NotReadableError') {
+                throw new Error('Camera is in use by another application.\n\nPlease close other apps using the camera.');
             } else {
-                btn.classList.remove('active');
+                throw new Error('Camera error: ' + err.message);
             }
-        });
+        }
     }
 
     // ==========================================
-    // WAIT FOR AR SYSTEM
+    // INITIALIZE AR.JS (FIXED - No _initialized)
     // ==========================================
-    function waitForAR(scene, timeout) {
+    function initializeARJS() {
         return new Promise((resolve, reject) => {
-            const start = Date.now();
+            showLoading('Initializing AR engine...');
 
-            function check() {
+            // Set arjs attribute on the scene
+            // This is done via JavaScript ONLY after permission is granted
+            scene.setAttribute('arjs', [
+                'sourceType: webcam',
+                'debugUIEnabled: false',
+                'detectionMode: mono_and_matrix',
+                'matrixCodeType: 3x3',
+                'trackingMethod: best'
+            ].join('; '));
+
+            // Wait for AR.js to initialize
+            const startTime = Date.now();
+            const timeout = 15000;
+
+            // 🔥 FIXED: Check for system existence AND video readiness
+            // No reliance on internal _initialized property
+            function checkARSystem() {
                 const arSystem = scene.systems && scene.systems['arjs'];
-                
-                if (arSystem) {
-                    console.log('[AR] System ready');
+                const video = document.querySelector('video');
+
+                // System exists AND video is streaming (readyState >= 2 means "have enough data")
+                if (arSystem && video && video.readyState >= 2) {
+                    console.log('[AR] AR.js initialized, video streaming');
                     resolve(arSystem);
                     return;
                 }
 
-                if (Date.now() - start > timeout) {
-                    reject(new Error('AR initialization timed out.'));
+                // Fallback: if system exists and video is loading but we've waited long enough
+                if (arSystem && video && video.readyState >= 1 && (Date.now() - startTime) > 3000) {
+                    console.log('[AR] AR.js ready (video loading, continuing...)');
+                    resolve(arSystem);
                     return;
                 }
 
-                setTimeout(check, 100);
+                // Emergency fallback: if system exists and we've waited 5+ seconds
+                if (arSystem && (Date.now() - startTime) > 5000) {
+                    console.log('[AR] AR.js system exists, assuming ready (video may be slow)');
+                    resolve(arSystem);
+                    return;
+                }
+
+                if (Date.now() - startTime > timeout) {
+                    reject(new Error('AR initialization timed out.\n\nPlease check your connection and reload.'));
+                    return;
+                }
+
+                setTimeout(checkARSystem, 100);
             }
 
-            check();
+            checkARSystem();
         });
     }
 
     // ==========================================
-    // MAIN START
+    // SETUP MARKER EVENTS
     // ==========================================
-    async function startAR() {
-        if (isARActive) return;
-        
-        arLoading.classList.add('active');
-        loadingText.textContent = 'Requesting camera...';
+    function setupMarkerEvents() {
+        // Re-fetch marker reference (in case DOM was updated)
+        const markerEl = document.getElementById('ar-marker');
+        if (!markerEl) {
+            console.warn('[AR] Marker element not found');
+            return;
+        }
 
-        try {
-            // Check HTTPS
-            if (location.protocol !== 'https:' && 
-                !['localhost', '127.0.0.1', ''].includes(location.hostname)) {
-                throw new Error('HTTPS required. Please use a secure connection.');
+        markerEl.addEventListener('markerFound', () => {
+            console.log('[AR] Marker FOUND');
+            markerDetected = true;
+            hideMarkerPrompt();
+            hideLoading();
+        });
+
+        markerEl.addEventListener('markerLost', () => {
+            console.log('[AR] Marker LOST');
+            markerDetected = false;
+            if (!modelLoaded) {
+                showMarkerPrompt();
             }
+        });
 
-            // Check camera API
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error('Camera API not supported.');
-            }
+        console.log('[AR] Marker events configured');
+    }
 
-            // Create scene
-            loadingText.textContent = 'Initializing AR...';
-            const scene = createScene();
+    // ==========================================
+    // SETUP MODEL EVENTS
+    // ==========================================
+    function setupModelEvents() {
+        const model = document.getElementById('model-entity');
+        if (!model) {
+            console.warn('[AR] Model entity not found');
+            hideLoading();
+            return;
+        }
 
-            // Wait for AR system
-            loadingText.textContent = 'Starting AR engine...';
-            await waitForAR(scene, 15000);
+        model.addEventListener('model-loaded', () => {
+            console.log('[AR] Model LOADED');
+            modelLoaded = true;
+            hideLoading();
+        });
 
-            // AR is ready
-            isARActive = true;
-            arLoading.classList.remove('active');
-            landing.classList.add('hidden');
-            arOverlay.classList.add('active');
-            
-            statusDot.classList.add('found');
-            statusText.textContent = 'Tap to place';
-            
-            // Show hint
-            scanHint.classList.remove('hidden');
+        model.addEventListener('model-error', (event) => {
+            console.warn('[AR] Model ERROR:', event.detail);
+            hideLoading();
+            // Don't show error - model is optional, AR still works
+        });
 
-            // Hide hint after first placement OR after 5 seconds
-            const canvas = document.querySelector('canvas');
-            if (canvas) {
-                const hideHint = function() {
-                    scanHint.classList.add('hidden');
-                    canvas.removeEventListener('click', hideHint);
-                    canvas.removeEventListener('touchstart', hideHint);
-                };
-                canvas.addEventListener('click', hideHint, { once: true });
-                canvas.addEventListener('touchstart', hideHint, { once: true });
-            }
-
-            // Auto-hide hint after 5 seconds
-            setTimeout(() => {
-                scanHint.classList.add('hidden');
-            }, 5000);
-
-            showToast('AR Ready! Tap screen to place model', 2000);
-            console.log('[AR] Markerless AR ready!');
-            console.log('[AR] Tap the screen to place the model');
-
-        } catch (err) {
-            console.error('[AR] Error:', err);
-            arLoading.classList.remove('active');
-            
-            let msg = err.message;
-            if (msg.includes('Permission') || msg.includes('NotAllowed')) {
-                msg = 'Camera permission denied. Please allow and reload.';
-            }
-            showToast('Failed: ' + msg, 5000);
+        // Check if model is already loaded
+        if (model.hasLoaded) {
+            console.log('[AR] Model already loaded');
+            modelLoaded = true;
+            hideLoading();
         }
     }
 
     // ==========================================
-    // STOP AR
+    // MAIN START FUNCTION
     // ==========================================
-    function stopAR() {
-        const scene = document.querySelector('a-scene');
-        if (scene) scene.remove();
-        
-        isARActive = false;
-        isPlaced = false;
-        arOverlay.classList.remove('active');
-        landing.classList.remove('hidden');
-        statusDot.classList.remove('found');
-        statusText.textContent = 'Scanning surfaces...';
-        scanHint.classList.add('hidden');
+    async function startAR() {
+        if (isARStarted) return;
+
+        // Disable button to prevent double-click
+        startBtn.disabled = true;
+        startBtn.textContent = 'Starting...';
+
+        try {
+            // Step 1: Check requirements
+            showLoading('Checking device...');
+            checkRequirements();
+
+            // Step 2: Request camera permission
+            await requestCameraPermission();
+
+            // Step 3: Hide permission overlay
+            overlay.classList.add('hidden');
+
+            // Step 4: Initialize AR.js
+            await initializeARJS();
+
+            // Step 5: Setup events
+            setupMarkerEvents();
+            setupModelEvents();
+
+            // Step 6: Show marker prompt
+            showMarkerPrompt();
+
+            // Step 7: Hide loading after a timeout if model doesn't load
+            setTimeout(() => {
+                if (!modelLoaded && !markerDetected) {
+                    hideLoading();
+                    showMarkerPrompt();
+                }
+            }, 5000);
+
+            isARStarted = true;
+            console.log('[AR] AR experience ready');
+
+        } catch (err) {
+            console.error('[AR] Start error:', err);
+            showError(err.message);
+            startBtn.disabled = false;
+            startBtn.textContent = 'Start AR';
+        }
     }
 
     // ==========================================
     // EVENT LISTENERS
     // ==========================================
-    launchBtn.addEventListener('click', startAR);
-    backBtn.addEventListener('click', stopAR);
+    startBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        startAR();
+    });
 
-    // Prevent zoom gestures
-    document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
-    document.addEventListener('touchmove', e => {
-        if (e.touches.length > 1) e.preventDefault();
-    }, { passive: false });
+    reloadBtn.addEventListener('click', () => {
+        window.location.reload();
+    });
 
-    window.addEventListener('resize', () => {
-        if (isARActive) {
-            forceVideoFullscreen();
+    // ==========================================
+    // PAGE VISIBILITY HANDLING
+    // ==========================================
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            console.log('[AR] Page hidden');
+        } else {
+            console.log('[AR] Page visible');
         }
     });
 
-    console.log('[AR] App ready - markerless mode');
-    console.log('[AR] Models: car.glb, animated_crow/scene.gltf, and procedural models');
-    console.log('[AR] Default model: Car');
+    // ==========================================
+    // INITIAL STATE
+    // ==========================================
+    function init() {
+        overlay.classList.remove('hidden');
+        errorScreen.classList.remove('visible');
+        loading.classList.add('hidden');
+        markerPrompt.classList.add('hidden');
+
+        console.log('[AR] App initialized');
+        console.log('[AR] 📌 BARCODE MARKER CONFIG:');
+        console.log('[AR]    Marker ID: 0 (change value="X" in index.html)');
+        console.log('[AR]    Physical marker: QR code with embedded barcode pattern');
+        console.log('[AR]    Generated separately - not part of this codebase');
+        console.log('[AR] 🔧 QUIRKS:');
+        console.log('[AR]    - Android Chrome: Works best with 3x3 matrix codes');
+        console.log('[AR]    - iOS Safari: Requires iOS 15+, may need user gesture to start video');
+        console.log('[AR]    - Camera: Always use environment-facing (rear) camera for markers');
+    }
+
+    init();
+
 })();
