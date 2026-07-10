@@ -5,26 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AR Experience</title>
 
-    <!-- A-Frame -->
-    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <!-- AR.js -->
-    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
+    <!-- Favicon (optional) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>">
 
-    <!-- CSS -->
+    <!-- Core Libraries -->
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+
+    <!-- Styles -->
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <!-- ===== PERMISSION OVERLAY ===== -->
+    <!-- ==========================================
+         UI OVERLAYS
+         ========================================== -->
+
+    <!-- Permission Overlay -->
     <div id="permission-overlay">
         <div class="icon">📷</div>
         <h1>AR Experience</h1>
-        <p>Point your camera at the Hiro marker to see the 3D car.</p>
+        <p>Point your camera at the Hiro marker to see the 3D models.</p>
         <button id="start-btn">Start AR</button>
     </div>
 
-    <!-- ===== ERROR SCREEN ===== -->
+    <!-- Error Screen -->
     <div id="error-screen">
         <div class="icon">⚠️</div>
         <h2>Camera Access Required</h2>
@@ -32,68 +39,73 @@
         <button id="reload-btn">🔄 Reload</button>
     </div>
 
-    <!-- ===== LOADING INDICATOR ===== -->
+    <!-- Loading Indicator -->
     <div id="loading" class="hidden">
         <div class="spinner"></div>
         <span id="loading-text">Loading AR...</span>
     </div>
 
-    <!-- ===== MARKER PROMPT ===== -->
+    <!-- Marker Prompt -->
     <div id="marker-prompt" class="hidden">📍 Point your camera at the marker</div>
 
-    <!-- ===== A-FRAME SCENE ===== -->
+    <!-- Model Switching Bar -->
+    <div id="model-bar">
+        <button class="model-btn active" data-model="car">🚗 Car</button>
+        <button class="model-btn" data-model="mecha">🤖 Mecha</button>
+    </div>
+
+    <!-- ==========================================
+         AR SCENE
+         ========================================== -->
+
     <a-scene
         id="ar-scene"
         embedded
         vr-mode-ui="enabled: false"
         renderer="logarithmicDepthBuffer: true; antialias: true;"
         loading-screen="enabled: false"
-        shadow="enabled: false;"
     >
 
-        <!-- ==========================================
-             LIGHTING — NO SHADOWS
-             ========================================== -->
-
-        <!-- Ambient light — soft fill -->
+        <!-- Lighting -->
         <a-entity light="type: ambient; intensity: 0.7; color: #ffffff;"></a-entity>
-
-        <!-- Key light — bright directional -->
         <a-entity light="type: directional; intensity: 1.2; color: #ffffff;" position="2 3 2"></a-entity>
-
-        <!-- Fill light — from left -->
         <a-entity light="type: directional; intensity: 1.0; color: #ffffff;" position="-2 2 -1"></a-entity>
-
-        <!-- Rim light — from back -->
         <a-entity light="type: directional; intensity: 0.8; color: #ffffff;" position="0 -1 2"></a-entity>
-
-        <!-- Extra fill lights -->
         <a-entity light="type: directional; intensity: 0.6; color: #ffffff;" position="2 -1 -2"></a-entity>
         <a-entity light="type: directional; intensity: 0.6; color: #ffffff;" position="-2 -1 2"></a-entity>
 
-        <!-- ==========================================
-             MARKER & MODEL
-             ========================================== -->
-
-        <a-marker 
-            id="ar-marker" 
-            preset="hiro" 
-            emitevents="true" 
-            smooth="true" 
+        <!-- Marker -->
+        <a-marker
+            id="ar-marker"
+            preset="hiro"
+            emitevents="true"
+            smooth="true"
             smoothCount="5"
         >
 
-            <!-- 🔥 CAR MODEL — SCALE 0.15 -->
+            <!-- Car Model -->
             <a-entity
-                id="model-entity"
+                id="car-model"
                 gltf-model="url(model.glb)"
                 scale="0.15 0.15 0.15"
                 position="0 0.2 0"
                 rotation="0 0 0"
                 animation="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear"
+                visible="false"
             ></a-entity>
 
-            <!-- Shadow disc (grounding) -->
+            <!-- Mecha Model -->
+            <a-entity
+                id="mecha-model"
+                gltf-model="url(mecha.glb)"
+                scale="0.15 0.15 0.15"
+                position="0 0.2 0"
+                rotation="0 0 0"
+                animation-mixer="clip: *; loop: repeat; timeScale: 1;"
+                visible="true"
+            ></a-entity>
+
+            <!-- Shadow Disc -->
             <a-entity position="0 -0.02 0" rotation="-90 0 0">
                 <a-circle material="color: black; transparent: true; opacity: 0.15;" radius="0.4"></a-circle>
             </a-entity>
@@ -104,7 +116,7 @@
     </a-scene>
 
     <!-- JavaScript -->
-    <script src="app.js"></script>
+    <script type="module" src="js/app.js"></script>
 
 </body>
 </html>
