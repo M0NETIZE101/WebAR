@@ -43,6 +43,15 @@ export function isModelLoaded() {
 }
 
 // ==========================================
+// 🔥 EXPORT: Reset model state (for reloading)
+// ==========================================
+export function resetModelState() {
+    modelLoaded = false;
+    isPlaced = false;
+    console.log('[AR] Model state reset');
+}
+
+// ==========================================
 // 🔥 FIXED: Quaternion → Euler rotation
 // ==========================================
 export function setupWorldAnchoring() {
